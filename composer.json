@@ -1,0 +1,21 @@
+{
+    "name": "ceive/view-layer",
+    "description": "A package model of the display (Layer - Block - Layout), representing the use of the possibility of overlaying layers on top of each other, using layouts and redefining blocks in layers",
+    "type": "library",
+    "license": "Apache 2.0",
+    "authors": [
+        {
+            "name": "lexus27",
+            "email": "lexus27.khv@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+	  "phpunit/phpunit": "^5.7"
+	},
+	"autoload": {
+	  "psr-4": {
+		"Ceive\\View\\Layer\\": "src/"
+	  }
+	}
+}
