@@ -28,6 +28,9 @@ class Lay{
 	/** @var  null|Composition[] */
 	protected $compositions;
 	
+	/** @var  Context|null */
+	protected $context;
+	
 	/** @var bool  */
 	protected $picked = false;
 	
@@ -41,6 +44,15 @@ class Lay{
 		if($compositions)$this->setCompositions($compositions);
 		
 		$this->ancestor = $ancestor;
+	}
+	
+	/**
+	 * @param Lay|null $ancestor
+	 * @return $this
+	 */
+	public function setAncestor(Lay $ancestor = null){
+		$this->ancestor = $ancestor;
+		return $this;
 	}
 	
 	/**
@@ -111,13 +123,26 @@ class Lay{
 	 */
 	public function getCompositionTargetDefine($name, $delegateToAncestors = true){
 		$compositions =$this->getCompositions();
-		if(isset($compositions[$name]) && ($target = $compositions[$name]->getTarget()) && $target instanceof BlockDefine){
+		
+		if(isset($compositions[$name])){
+			$target = $compositions[$name]->getTarget();
+		}
+		if(isset($target) && $target instanceof BlockDefine){
 			return $target;
 		}
+		
 		if(!$delegateToAncestors){
 			return null;
 		}
-		return $this->ancestor?$this->ancestor->getCompositionTargetDefine($name):null;
+		$a = $this->ancestor?$this->ancestor->getCompositionTargetDefine($name):null;
+		
+		
+		if(!$a && isset($target)){
+			return $target;
+		}
+		
+		
+		return $a;
 	}
 	
 	/**
@@ -130,6 +155,22 @@ class Lay{
 				$composition->pick();
 			}
 		}
+		return $this;
+	}
+	
+	/**
+	 * @return Context
+	 */
+	public function getContext(){
+		return $this->context;
+	}
+	
+	/**
+	 * @param Context $context
+	 * @return $this
+	 */
+	public function setContext(Context $context){
+		$this->context = $context;
 		return $this;
 	}
 	

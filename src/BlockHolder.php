@@ -282,6 +282,30 @@ class BlockHolder implements BlockHolderInterface{
 	}
 	
 	/**
+	 * @return array[] | BlockHolder[]
+	 */
+	public function getContainOwnHolders(){
+		$holders = [];
+		/** @var Block $block */
+		foreach(array_merge($this->targets, $this->prepends, $this->appends) as $block){
+			if(!$block->getComposition()){
+				foreach($block->contents as $content){
+					if($content instanceof Layout){
+						$_holders = $content->getContainHolders();
+						foreach($_holders as $name => $__holders){
+							if(!isset($holders[$name])){
+								$holders[$name] = [];
+							}
+							$holders[$name] = array_merge($holders[$name], $__holders);
+						}
+					}
+				}
+			}
+		}
+		return $holders;
+	}
+	
+	/**
 	 * @return string
 	 */
 	public function render(){

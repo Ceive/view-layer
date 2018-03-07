@@ -65,7 +65,7 @@ class Composition{
 	 * @param BlockPrepend[] $prepends
 	 * @param BlockAppend[] $appends
 	 */
-	public function __construct(BlockTarget $target, array $prepends = null, array $appends = null){
+	public function __construct(BlockTarget $target = null, array $prepends = null, array $appends = null){
 		$this->target   = $target;
 		$this->prepends = $prepends?:[];
 		$this->appends  = $appends?:[];

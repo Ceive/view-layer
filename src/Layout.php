@@ -24,7 +24,11 @@ class Layout implements Element{
 	/** @var  null|BlockHolder[]  */
 	protected $_holders;
 	
+	/** @var  Lay|null */
+	protected $lay;
+	
 	protected $depth;
+	
 	
 	/**
 	 * @param Element $layout
@@ -34,6 +38,35 @@ class Layout implements Element{
 		$this->elements[] = $layout;
 		$layout->setParent($this);
 		return $this;
+	}
+	
+	/**
+	 * @param Lay $lay
+	 * @return $this
+	 */
+	public function setLay(Lay $lay){
+		$this->lay = $lay;
+		return $this;
+	}
+	
+	/**
+	 * @return Lay|null
+	 */
+	public function getLay(){
+		return $this->lay;
+	}
+	
+	/**
+	 * @return Lay|null
+	 */
+	public function getTopLay(){
+		if($this->lay){
+			return $this->lay;
+		}
+		if($lay = $this->getParentLayout()){
+			return $lay->getTopLay();
+		}
+		return null;
 	}
 	
 	/**
@@ -129,7 +162,23 @@ class Layout implements Element{
 					$this->_holders[$element->getPath()][] = $element;
 				}
 			}
+			
+			foreach($this->_holders as $name => $holders){
+				
+				/** @var BlockHolder $holder */
+				foreach($holders as $holder){
+					$inner = $holder->getContainOwnHolders();
+					foreach($inner as $innerName => $innerHolders){
+						foreach($innerHolders as $innerHolder){
+							$this->_holders[$name . '.' . $innerName][] = $innerHolder;
+						}
+					}
+				}
+			}
 		}
+		
+		
+		
 		return $this->_holders;
 	}
 	
@@ -165,10 +214,7 @@ class Layout implements Element{
 		
 		$a = implode("\r\n", $a);
 		$a =  str_replace("\r\n", "\r\n\t", $a);
-		return
-			"<div>\r\n" .
-			"\t{$a}\r\n" .
-			"</div>";
+		return $a;
 	}
 	
 }

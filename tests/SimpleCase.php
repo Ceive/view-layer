@@ -15,6 +15,70 @@ use PHPUnit\Framework\TestCase;
 
 class SimpleCase extends TestCase{
 	
+	public function testBuilder(){
+		
+		
+		$dirname = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public/example';
+		
+		$builder = new Builder();
+		$builder->dirname = $dirname;
+		
+		$lay = null;
+		$lay = $builder->parseFileForLay('/a.tpl', true)->setContext(new Context([
+			'property' => 'value'
+		]))->setAncestor($lay);
+		$lay = $builder->parseFileForLay('/b.tpl', true)->setContext(new Context([
+			'property' => '1'
+		]))->setAncestor($lay);
+		$lay = $builder->parseFileForLay('/c.tpl', true)->setContext(new Context([
+			'property' => '2'
+		]))->setAncestor($lay);
+		$lay = $builder->parseFileForLay('/f.tpl', true)->setContext(new Context([
+			'property' => '3'
+		]))->setAncestor($lay);
+		$lay = $builder->parseFileForLay('/j.tpl', true)->setContext(new Context([
+			'property' => '4'
+		]))->setAncestor($lay);
+		
+		
+		
+		$layout = $lay->getMainLayout();
+		echo $contents = $layout->render();
+		
+		file_put_contents(dirname($dirname) . DIRECTORY_SEPARATOR . 'result.html', $contents);
+		
+		/*
+		
+		
+		$builder->parseAttributes('name="as"');
+		$a = $builder->parseCompositions(<<<HTML
+<html>
+<head>
+	
+	<title>Abcs</title>
+	
+</head>
+<body>
+	{holder name="header"/}
+	
+	{holder}
+	
+		{holder name="header"/}
+		
+	{/holder}
+	
+	{holder name="footer"/}
+</body>
+</html>
+HTML
+		);
+		
+		
+		print_r($a);
+		*/
+		
+	}
+	
 	public function testA(){
 		
 		

@@ -93,6 +93,13 @@ abstract class Block{
 		$name = $this->composition->getName();
 		$lay = $this->composition->getLay();
 		$holders = $this->findHolders($name, $lay);
+		
+		foreach($this->contents as $content){
+			if($content instanceof Layout){
+				$content->setLay($lay);
+			}
+		}
+		
 		foreach($holders as $holder){
 			$this->addToHolder($holder);
 		}
