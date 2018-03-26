@@ -13,6 +13,25 @@ use Ceive\View\Layer\Block\BlockDefine;
 use Ceive\View\Layer\Block\BlockPrepend;
 use PHPUnit\Framework\TestCase;
 
+/**
+ * @Author: Alexey Kutuzov <lexus27.khv@gmail.com>
+ * Class SimpleCase
+ * @package Ceive\View\Layer
+ *
+ * @TODO: Внедрить поддержку плейсхолдеров в шаблонах(блоках и макетах)
+ * @TODO: Доступность аттрибутного контекста с локатором в шаблонах
+ * @TODO: AC для текущего Слоя; общий AC; Attribute Context Aliasing
+ *
+ * layout => [
+ *      lay: '*.tpl',
+ *      tpl: '*.tpl',
+ *      params: [
+ *          'user' => '{operation.object}'
+ *      ]
+ * ]
+ *
+ *
+ */
 class SimpleCase extends TestCase{
 	
 	public function testBuilder(){
@@ -22,61 +41,24 @@ class SimpleCase extends TestCase{
 		
 		$builder = new Builder();
 		$builder->dirname = $dirname;
-		
-		$lay = null;
-		$lay = $builder->parseFileForLay('/a.tpl', true)->setContext(new Context([
-			'property' => 'value'
-		]))->setAncestor($lay);
-		$lay = $builder->parseFileForLay('/b.tpl', true)->setContext(new Context([
-			'property' => '1'
-		]))->setAncestor($lay);
-		$lay = $builder->parseFileForLay('/c.tpl', true)->setContext(new Context([
-			'property' => '2'
-		]))->setAncestor($lay);
-		$lay = $builder->parseFileForLay('/f.tpl', true)->setContext(new Context([
-			'property' => '3'
-		]))->setAncestor($lay);
-		$lay = $builder->parseFileForLay('/j.tpl', true)->setContext(new Context([
-			'property' => '4'
-		]))->setAncestor($lay);
-		
-		
+		$lay = $builder->build([
+			[
+				'layer' => '/layer-a.xlay',
+			],[
+				'layer' => '/layer-b.xlay',
+			],[
+				'layer' => '/layer-c.xlay',
+			],[
+				'layer' => '/layer-f.xlay',
+			],[
+				'layer' => '/layer-j.xlay',
+			]
+		]);
 		
 		$layout = $lay->getMainLayout();
 		echo $contents = $layout->render();
 		
 		file_put_contents(dirname($dirname) . DIRECTORY_SEPARATOR . 'result.html', $contents);
-		
-		/*
-		
-		
-		$builder->parseAttributes('name="as"');
-		$a = $builder->parseCompositions(<<<HTML
-<html>
-<head>
-	
-	<title>Abcs</title>
-	
-</head>
-<body>
-	{holder name="header"/}
-	
-	{holder}
-	
-		{holder name="header"/}
-		
-	{/holder}
-	
-	{holder name="footer"/}
-</body>
-</html>
-HTML
-		);
-		
-		
-		print_r($a);
-		*/
-		
 	}
 	
 	public function testA(){

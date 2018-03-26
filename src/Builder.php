@@ -20,18 +20,55 @@ use Ceive\View\Layer\Block\BlockTarget;
  */
 class Builder{
 	
-	public $parsed = [];
-	
 	public $dirname;
 	
-	public $directories = [];
+	public $parsed = [];
 	
+	
+	public $directoriesUsageHistory = [];
+	
+	/**
+	 * @param array $definition
+	 * @return Lay|null
+	 */
+	public function build(array $definition){
+		$lay = null;
+		foreach($definition as $item){
+			$item = array_replace(
+				[
+					'layer'  => null,
+					'params' => null,
+				],
+				$item
+			);
+			
+			if(is_array($item['params'])){
+				$item['params'] = new Context($item['params']);
+			}
+			if(!is_array($item['layer'])){
+				$item['layer'] = $item['layer'] ? [ $item['layer'] ] : [];
+			}
+			foreach($item['layer'] as $layer){
+				$layer = $this->parseLayFile($layer, true);
+				if($layer){
+					if($item['params']){
+						$layer = $layer->setContext($item['params']);
+					}
+					if($lay){
+						$layer->setAncestor($lay);
+					}
+					$lay = $layer;
+				}
+			}
+		}
+		return $lay;
+	}
 	
 	/**
 	 * @param $path
 	 * @return Layout|null
 	 */
-	public function parseFileForLayout($path, $enableRelative = false){
+	public function parseLayoutFile($path, $enableRelative = false){
 		
 		if($enableRelative && substr($path, 0, 1) === '/'){
 			$path = $this->dirname . $path;
@@ -40,10 +77,10 @@ class Builder{
 		if(file_exists($path)){
 			try{
 				$content = file_get_contents($path);
-				$this->directories[] = dirname($path);
+				$this->directoriesUsageHistory[] = dirname($path);
 				return $this->parseLayout($content);
 			}finally{
-				array_pop($this->directories);
+				array_pop($this->directoriesUsageHistory);
 			}
 		}
 		return null;
@@ -54,7 +91,7 @@ class Builder{
 	 * @param bool $enableRelative
 	 * @return Lay|null
 	 */
-	public function parseFileForLay($path, $enableRelative = false){
+	public function parseLayFile($path, $enableRelative = false){
 		
 		if($enableRelative && substr($path, 0, 1) === '/'){
 			$path = $this->dirname . $path;
@@ -63,15 +100,27 @@ class Builder{
 		if(file_exists($path)){
 			try{
 				$content = file_get_contents($path);
-				$this->directories[] = dirname($path);
+				$this->directoriesUsageHistory[] = dirname($path);
 				return $this->parseLay($content);
 			}finally{
-				array_pop($this->directories);
+				array_pop($this->directoriesUsageHistory);
 			}
 		}
 		return null;
 	}
 	
+	
+	/**
+	 * @param $content
+	 * @return Composition[]|Layout|null
+	 */
+	public function parse($content){
+		$compositions = $this->parseCompositions($content);
+		if(!$compositions){
+			return $this->parseLayout($content);
+		}
+		return $compositions;
+	}
 	
 	/**
 	 * @param $content
@@ -98,16 +147,17 @@ class Builder{
 		return $lay;
 	}
 	
-	/**
-	 * @param $content
-	 * @return Composition[]|Layout|null
-	 */
-	public function parse($content){
-		$compositions = $this->parseCompositions($content);
-		if(!$compositions){
-			return $this->parseLayout($content);
-		}
-		return $compositions;
+	public function getRegex(){
+		$regex = /** @lang RegExp */
+			'@
+		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)/\]|
+		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)\]
+			((?R)*)
+		\[/\g{-5}\]|
+		<script[^>]+>[^<]+</script>|
+		<style[^>]+>[^<]+</style>|
+		[^\[]+@smx';
+		return $regex;
 	}
 	
 	/**
@@ -120,15 +170,7 @@ class Builder{
 			return [];
 		}
 		
-		$regex = /** @lang RegExp */
-			'@
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)/\]|
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)\]
-			((?R)*)
-		\[/\g{-5}\]|
-		<script[^>]+>[^<]+</script>|
-		<style[^>]+>[^<]+</style>|
-		[^\[]+@smx';
+		$regex = $this->getRegex();
 		
 		$compositions = [];
 		
@@ -172,11 +214,7 @@ class Builder{
 						case $block instanceof BlockPrepend; $compositions[$name]['prepends'][] = $block; break;
 						case $block instanceof BlockTarget; $compositions[$name]['target'] = $block; break;
 					}
-					
-					
 				}
-				
-				
 			}
 			
 		}
@@ -200,15 +238,7 @@ class Builder{
 			return null;
 		}
 		
-		$regex = /** @lang RegExp */
-			'@
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)/\]|
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)\]
-			((?R)*)
-		\[/\g{-5}\]|
-		<script[^>]+>[^<]+</script>|
-		<style[^>]+>[^<]+</style>|
-		[^\[]+@smx';
+		$regex = $this->getRegex();
 		
 		$layout = new Layout();
 		
@@ -236,9 +266,8 @@ class Builder{
 						}
 						break;
 					default:
-						$m[0] = trim($m[0]);
-						if($m[0]){
-							$layout->add( new SimpleElement($m[0]));
+						if(trim($m[0])){
+							$layout->add( new SimpleElement(ltrim($m[0], "\r\n")));
 						}
 						break;
 				}
@@ -286,7 +315,7 @@ class Builder{
 	 * @return mixed
 	 */
 	public function getCurrentDir(){
-		return $this->directories?end($this->directories):$this->dirname;
+		return $this->directoriesUsageHistory?end($this->directoriesUsageHistory):$this->dirname;
 	}
 	
 	/**
@@ -306,8 +335,8 @@ class Builder{
 		$name = isset($attributes['name'])?$attributes['name']:null;
 		$type = isset($attributes['type']) && $attributes['type']?$attributes['type']:null;
 		if(!isset($content)){
-			$include = isset($attributes['include'])?$attributes['include']:null;
-			if($include)$content = $this->includeContent($include);
+			$include = isset($attributes['inc'])?$attributes['inc']:null;
+			if($include)$content = $this->inc($include);
 		}else{
 			$content = $this->parseLayout($content);
 		}
@@ -346,12 +375,16 @@ class Builder{
 	}
 	
 	/**
-	 * @param $include
+	 * @param $path
 	 * @return Layout|null
 	 */
-	public function includeContent($include){
-		$path = $this->getCurrentDir() . '/' . $include;
-		return $this->parseFileForLayout($path, false);
+	public function inc($path){
+		if(in_array(substr($path,0,1), [ '/', "\\"])){
+			$path = $this->dirname . $path;
+		}else{
+			$path = $this->getCurrentDir() . '/' . $path;
+		}
+		return $this->parseLayoutFile($path, false);
 	}
 	
 	/**

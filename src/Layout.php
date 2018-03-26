@@ -208,12 +208,27 @@ class Layout implements Element{
 		$elements = $this->getElements();
 		$a = [];
 		foreach($elements as $element){
-			$a[] = $element->render();
+			
+			$rendered = $element->render();
+			$l = strlen($rendered);
+			$indentation = '';
+			for($i=0;$i < $l; $i++){
+				$token = $rendered{$i};
+				if(in_array($token, [" ", "\t"])){
+					$indentation.=$token;
+				}else{
+					$rendered = substr($rendered, strlen($indentation));
+					break;
+				}
+			}
+			
+			$rendered = str_replace("\r\n".$indentation, "\r\n", $rendered);
+			$a[] = $rendered;
 		}
 		
 		
 		$a = implode("\r\n", $a);
-		$a =  str_replace("\r\n", "\r\n\t", $a);
+		//$a =  str_replace("\r\n", "\r\n\t", $a);
 		return $a;
 	}
 	
