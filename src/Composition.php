@@ -6,69 +6,39 @@
  */
 
 namespace Ceive\View\Layer;
-use Ceive\View\Layer\Block\BlockAppend;
-use Ceive\View\Layer\Block\BlockPrepend;
-use Ceive\View\Layer\Block\BlockTarget;
+
 
 
 /**
  * @Author: Alexey Kutuzov <lexus27.khv@gmail.com>
  * Class Composition
  */
-class Composition{
+class Composition extends AbstractEntity{
 	
-	/** @var  Lay */
-	protected $lay;
+	/** @var  Layer */
+	public $layer;
 	
 	/** @var  string */
-	protected $name;
+	public $name;
 	
-	/** @var BlockTarget|null */
-	protected $target;
 	
-	/** @var BlockPrepend[] */
-	protected $prepends = [];
+	/** @var Block|null */
+	public $target;
 	
-	/** @var BlockAppend[] */
-	protected $appends = [];
+	/** @var Block[] */
+	public $prepends = [];
 	
+	/** @var Block[] */
+	public $appends = [];
+	
+	/** @var bool  */
 	protected $picked = false;
 	
 	/**
-	 * @param $name
-	 * @return $this
+	 * @return bool
 	 */
-	public function setName($name){
-		$this->name = $name;
-		return $this;
-	}
-	
-	/**
-	 * @param Lay $lay
-	 * @return $this
-	 */
-	public function setLay(Lay $lay){
-		$this->lay = $lay;
-		return $this;
-	}
-	
-	/**
-	 * @return string
-	 */
-	public function getName(){
-		return $this->name;
-	}
-	
-	/**
-	 * Composition constructor.
-	 * @param BlockTarget $target
-	 * @param BlockPrepend[] $prepends
-	 * @param BlockAppend[] $appends
-	 */
-	public function __construct(BlockTarget $target = null, array $prepends = null, array $appends = null){
-		$this->target   = $target;
-		$this->prepends = $prepends?:[];
-		$this->appends  = $appends?:[];
+	public function isPicked(){
+		return $this->picked;
 	}
 	
 	/**
@@ -79,15 +49,15 @@ class Composition{
 			$this->picked = true;
 			
 			foreach($this->prepends as $block){
-				$block->setComposition($this);
+				$block->composition = $this;
 				$block->pick();
 			}
 			if($this->target){
-				$this->target->setComposition($this);
+				$this->target->composition = $this;
 				$this->target->pick();
 			}
 			foreach($this->appends as $block){
-				$block->setComposition($this);
+				$block->composition = $this;
 				$block->pick();
 			}
 			
@@ -102,6 +72,7 @@ class Composition{
 	public function unpick(){
 		
 		if($this->picked){
+			$this->picked = false;
 			
 			foreach($this->prepends as $block){
 				$block->unpick();
@@ -114,8 +85,6 @@ class Composition{
 			foreach($this->appends as $block){
 				$block->unpick();
 			}
-			
-			$this->picked = false;
 		}
 		
 		return $this;
@@ -123,82 +92,59 @@ class Composition{
 	
 	
 	/**
-	 * @param $name
-	 * @return BlockHolder[]
+	 * @param $holderName
+	 * @return Holder[]
 	 */
-	public function findContainHolders($name){
+	public function getContainHoldersBy($holderName = null){
 		$holders = [];
 		
-		$compositionName = $this->getName();
-		if(substr($name, 0, $cNLen = strlen($compositionName)) === $compositionName){
-			$searchName = trim(substr($name, $cNLen),'.');
+		$compositionName = $this->name;
+		
+		$compositionNameLength = strlen($compositionName);
+		$startOfName = substr($holderName, 0, $compositionNameLength);
+		
+		if($startOfName === $compositionName){
+			$searchName = trim(substr($holderName, $compositionNameLength),'.');
 		}else{
 			//if(strpos($name,'.')!==false)
 			//return []
-			$searchName = trim($name,'.');
+			$searchName = trim($holderName,'.');
 		}
 		
-		if($block = $this->getTarget()){
+		if($block = $this->target){
 			
-			if($compositionName === $name){
-				$holders = array_merge($holders, $this->_searchHoldersIn(null, $block));
+			if($compositionName === $holderName){
+				$holders = array_merge($holders, $block->getContainHoldersBy(null));
 			}else{
-				$holders = array_merge($holders, $this->_searchHoldersIn($searchName, $block));
+				$holders = array_merge($holders, $block->getContainHoldersBy($searchName));
 			}
 			
 		}
 		foreach($this->prepends as $block){
-			$holders = array_merge($holders, $this->_searchHoldersIn($searchName, $block));
+			$holders = array_merge($holders, $block->getContainHoldersBy($searchName));
 		}
 		foreach($this->appends as $block){
-			$holders = array_merge($holders, $this->_searchHoldersIn($searchName, $block));
+			$holders = array_merge($holders, $block->getContainHoldersBy($searchName));
 		}
 		return $holders;
 	}
 	
-	/**
-	 * @param $name
-	 * @param Block $block
-	 * @return BlockHolder[]
-	 */
-	protected function _searchHoldersIn($name, Block $block){
-		$holders = [];
-		foreach($block->contents as $content){
-			if($content instanceof Layout){
-				$holders = array_merge($holders, $content->getContainHoldersBy($name));
-			}else if($content instanceof BlockHolder && $content->getPath() === $name){
-				$holders[] = $content;
-			}
-		}
-		return $holders;
-	}
 	
 	/**
-	 * @return array|BlockAppend[]
+	 * @param $type
+	 * @return Block
 	 */
-	public function getAppends(){
-		return $this->appends;
-	}
-	
-	/**
-	 * @return array|BlockPrepend[]
-	 */
-	public function getPrepends(){
-		return $this->prepends;
-	}
-	
-	/**
-	 * @return BlockTarget|null
-	 */
-	public function getTarget(){
-		return $this->target;
-	}
-	
-	/**
-	 * @return Lay
-	 */
-	public function getLay(){
-		return $this->lay;
+	public function registerBlock($type){
+		
+		$type = $this->layer->manager->requireType($type);
+		
+		$block = new Block($type);
+		$block->name = $this->name;
+		
+		$type->attachToComposition($this, $block);
+		
+		return $block;
+		
 	}
 	
 	

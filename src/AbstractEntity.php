@@ -5,10 +5,14 @@
  * @Project: ceive.view-layer
  */
 
-namespace Ceive\View\Layer\Block;
+namespace Ceive\View\Layer;
 
 
-class BlockDefine extends BlockTarget{
+abstract class AbstractEntity{
+	
+	public $source;
+	
+	public $params = [];
 	
 }
 

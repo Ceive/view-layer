@@ -7,10 +7,11 @@
 
 namespace Ceive\View\Layer;
 
-use Ceive\View\Layer\Block\BlockAppend;
-use Ceive\View\Layer\Block\BlockCascade;
-use Ceive\View\Layer\Block\BlockDefine;
-use Ceive\View\Layer\Block\BlockPrepend;
+use Ceive\View\Layer\Node\Babel;
+use Ceive\View\Layer\Node\Package;
+use Ceive\View\Layer\Transpiler\FS\FSGlob;
+use Ceive\View\Layer\Transpiler\Syntax;
+use Ceive\View\Layer\Transpiler\Transpiler;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -34,261 +35,191 @@ use PHPUnit\Framework\TestCase;
  */
 class SimpleCase extends TestCase{
 	
-	public function testBuilder(){
+	
+	public function testNodeVerbose(){
+		$dirname = dirname(__DIR__);
+		chdir($dirname);
+		
+		/// Generate package.json
+		
+		$package = new Package($dirname);
+		if(!$package->configLoaded){
+			$package->initial(basename($dirname));
+		}
+		
+		$package->devDependency('webpack');
+		$package->devDependency('webpack-cli');
+		
+		$package->devDependency('babel-core');
+		$package->devDependency('babel-loader');
+		$package->devDependency('babel-preset-env');
+		$package->devDependency('babel-preset-react');
+		
+		$package->devDependency('babel-plugin-transform-class-properties'); // ES6 Class properties
+		
+		$package->devDependency('url-loader'); // Url imports
+		$package->devDependency('file-loader'); // File imports
+		
+		$package->dependency('react');
+		$package->dependency('react-dom');
+		
+		$package->script('build', 'webpack --mode production');
+		
+		$package->build();
+		
+		$babel = new Babel($dirname);
+		$babel->preset("env", "react");
+		$babel->plugin("transform-class-properties", ["spec" => true ]); // ES6 Class properties
+		$babel->build();
 		
 		
-		$dirname = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public/example';
 		
-		$builder = new Builder();
-		$builder->dirname = $dirname;
-		$lay = $builder->build([
-			[
-				'layer' => '/layer-a.xlay',
-			],[
-				'layer' => '/layer-b.xlay',
-			],[
-				'layer' => '/layer-c.xlay',
-			],[
-				'layer' => '/layer-f.xlay',
-			],[
-				'layer' => '/layer-j.xlay',
-			]
-		]);
+		$webpackConfig = <<<JS
 		
-		$layout = $lay->getMainLayout();
-		echo $contents = $layout->render();
+const path = require("path");
+const dist = path.resolve(__dirname, "view/build");
+const src = path.resolve(__dirname, "view/dist");
 		
-		file_put_contents(dirname($dirname) . DIRECTORY_SEPARATOR . 'result.html', $contents);
+		
+module.exports = {
+	context: src,
+	entry: [
+		path.resolve(__dirname, "view/dist/main.js")
+	],
+	output: {
+		path: dist,
+		filename: "bundle.js",
+		publicPath: '/public/',
+	},
+	module: {
+
+		rules: [
+			{
+				test: /\.js$/,
+				exclude: /node_modules/,
+				use: {
+					loader: "babel-loader"
+				}
+			},{
+				test: /\.(png|jpg|)$/,
+				loader: 'url-loader?limit=200000' // Url imports
+			}
+		]
+	}
+};
+JS;
+		file_put_contents($dirname . '/webpack.config.js', $webpackConfig);
+		
+		$package->npm('run build');
 	}
 	
-	public function testA(){
+	public function testLab(){
 		
 		
-		$lay = new Lay([
-			
-			':main' => new Composition(new BlockDefine([
-				
-				(new Layout())
-					->add(new BlockHolder('header'))
-					->add(
-						
-						(new Layout())
-							->add(new SimpleElement(' [ top ] '))
-							->add(new BlockHolder(null))
-							->add(new SimpleElement(' [ bottom ] '))
-					
-					)
-					->add(new BlockHolder('footer'))
-			
-			]),null,null)
-		
-		]);
-		
-		$lay = new Lay([
-			
-			'header' => new Composition(new BlockCascade([
-				
-				(new Layout())
-					->add(new BlockHolder(null))
-					->add(new SimpleElement(' [ HEAD < ] '))
-					->add(new BlockHolder('authorization'))
-					->add(new SimpleElement(' [ HEAD > ] '))
-			
-			]),null,null),
-			
-			':main' => new Composition(new BlockCascade([
-				
-				(new Layout())->add(new SimpleElement(' [ cascade ] '))
-			
-			]),[
-				new BlockPrepend([
-					(new Layout())->add(new SimpleElement(' [ prepend ] '))
-				])
-			],[
-				new BlockAppend([
-					(new Layout())->add(new SimpleElement(' [ append ] '))
-				])
-			])
-		
-		], $lay);
 		
 		
-		$lay = new Lay([
-			
-			'header.authorization' => new Composition(new BlockCascade([
-				
-				(new Layout())
-					->add(new SimpleElement(' [ AUTHORIZATION ] '))
-			
-			]),null,null),
-			
-			
-			'footer' => new Composition(new BlockCascade([
-				
-				(new Layout())->add(new SimpleElement(' [ footer-target ] '))
-			
-			]),[
-				new BlockPrepend([ (new Layout())->add(new SimpleElement(' [ footer-prepend-L2 ] ')) ])
-			],[
-				new BlockAppend([ (new Layout())->add(new SimpleElement(' [ footer-append-L2 ] ')) ])
-			])
+		$source = 'C:\OpenServer\domains\project.ru\src\layers\templates\a.tpl';
+		$dest = 'C:\OpenServer\domains\project.ru\src\main.js';
+		$result = $this->func($source, $dest);
+		$this->assertEquals('../../main.js', $result);
 		
-		], $lay);
 		
-		$lay = new Lay([
-			
-			'header.authorization' => new Composition(new BlockCascade([
-				
-				(new Layout())
-					->add(new SimpleElement(' [ AUTH_CASCADE ] '))
-			
-			]),null,null),
-			
-			'header' => new Composition(new BlockCascade([
-				
-				(new Layout())
-					->add(new SimpleElement(' [ HEADER_CASCADE ] '))
-			
-			]),[
-				new BlockPrepend([ (new Layout())->add(new SimpleElement(' [ header-prepend-L3 ] ')) ])
-			],[
-				new BlockAppend([ (new Layout())->add(new SimpleElement(' [ header-append-L3 ] ')) ])
-			]),
-			
-			'footer' => new Composition(new BlockCascade([
-				
-				(new Layout())->add(new SimpleElement(' [ footer-target ] '))
-			
-			]),[
-				new BlockPrepend([ (new Layout())->add(new SimpleElement(' [ footer-prepend-L3 ] ')) ])
-			],[
-				new BlockAppend([ (new Layout())->add(new SimpleElement(' [ footer-append-L3 ] ')) ])
-			])
+		$source = 'C:\OpenServer\domains\project.ru\src\main.js';
+		$dest = 'C:\OpenServer\domains\project.ru\src\layers\templates\a.tpl' ;
+		$result = $this->func($source, $dest);
+		$this->assertEquals('./layers/templates/a.tpl', $result);
 		
-		], $lay);
+		$source = 'C:\OpenServer\domains\project.ru\src\main.js';
+		$dest = 'C:\OpenServer\domains\a\src\layers\templates\a.tpl' ;
+		$result = $this->func($source, $dest);
+		$this->assertEquals('../../a/src/layers/templates/a.tpl', $result);
 		
-		$level = $lay->getLevel();
+		$source = 'src\main.js';
+		$dest = 'src\layers\templates\a.tpl' ;
+		$result = $this->func($source, $dest);
+		$this->assertEquals('./layers/templates/a.tpl', $result);
 		
-		$layout = $lay->getMainLayout();
-		$rendered = $layout->render();
-		echo $rendered;
 		
+		$source = 'src\layers\templates\a.tpl' ;
+		$dest = 'src\main.js';
+		$result = $this->func($source, $dest);
+		$this->assertEquals('../../main.js', $result);
+		
+		$source = 'C:\op\src\layers\templates\a.tpl' ;
+		$dest = 'C:\src\main.js';
+		$result = $this->func($source, $dest, 'C:\op');
+		$this->assertEquals(false, $result);
+		
+		
+		$source = 'C:\sop\src\layers\templates\a.tpl' ;
+		$dest = 'C:\src\main.js';
+		$result = $this->func($source, $dest, 'C:\\');
+		$this->assertEquals('../../../../src/main.js', $result);
 		
 	}
 	
-	/**
-	 *
-	 */
-	public function _old_testLay(){
+	public function func($src, $dest, $restrictBase = null){
+		$srcDir = strtr( dirname($src), ['\\' => '/']);
+		$destDir = strtr( dirname($dest), ['\\' => '/']);
+		if($restrictBase)$restrictBase = strtr( $restrictBase, ['\\' => '/']);
 		
-		/* OLD
-		$lay = new Lay(new DummyLayer([
+		$equal = '';
+		$cut = 0;
+		
+		$minLength = min(strlen($srcDir),strlen($destDir));
+		
+		for($i=0;($srcToken = @$srcDir{$i}) && ($destToken = @$destDir{$i}) && $srcToken === $destToken;$i++){
+			$equal.=$srcToken;
 			
-			':main' => [
-				new BlockReplace([
-					new Layout([
-						"Сайт Autist.com",
-						"   {header}",
-						"   --------------",
-						"   {*}",
-						"   --------------",
-						"   {footer}",
-						"   --------------",
-						"   Контакты компании",
-						"     Телефон: +99999",
-						"     Email: question@autist.com",
-					])
-				])
-			],
-		    
-		]));
-		
-		
-		$lay = new Lay(new DummyLayer([
+			if($srcToken == '/'){
+				$cut = 0;
+			}else{
+				$cut++;
+			}
 			
-			':main' => [
-				new BlockReplace([
-					new Layout([
-						"Раздел пользователи",
-						"   {*}",
-						"Корпорация рада всем нашим пользователям",
-					])
-				])
-			],
-			
-			'header' => [
-				new Block\BlockDefinition([
-					new Layout([
-						"Главная | Пользователи | Блог | Аккаунт | {authorization}",
-					])
-				])
-			],
-			
-			'footer' => [
-				new BlockReplace(['Ебать футер']),
-			],
-		
-		]), $lay);
+		}
 		
 		
+		if($cut && $minLength > strlen($equal)){
+			$equal = substr($equal, 0, -$cut);
+		}
 		
-		$lay = new Lay(new DummyLayer([
-			':main' => [
-				new BlockReplace([
-					new Layout([
-						"Пользователь Вася",
-						"   Пароль: JBGvwerb",
-						"   Логин: Vasya",
-						"   E-Mail: vasyka@mail.ru",
-						"   Мобильный: +7 (914) 172 55 25 ",
-					])
-				])
-			],
-			
-			'header' => [
-				new Block\BlockAppend([
-					new Layout([
-						"Дополнительные элементы шапки",
-					])
-				])
-			],
-			
-			'header.authorization' => [
-				new Block\BlockDefinition([
-					new Layout([
-						"Авторизация | Регистрация | {*}",
-					])
-				])
-			],
+		if($restrictBase && substr($equal, 0, strlen($restrictBase)) !== $restrictBase){
+			return false;
+		}
 		
+		$srcSuffix = trim(substr($srcDir, strlen($equal)), '\/');
+		$destSuffix = trim(substr($destDir, strlen($equal)), '\/');
 		
-		]), $lay);
+		$path = $srcSuffix? array_fill( 0, count(explode('/',$srcSuffix)), '..'): null;
+		$path = ($path?implode('/', $path):'.') . ($destSuffix? '/' . str_replace(['\\'],['/'],$destSuffix) :'') . '/' . basename($dest);
 		
-		$lay = new Lay(new DummyLayer([
-			
-			'header.authorization' => [
-				new Block\BlockInner([
-					new Layout([
-						"После регистрации(вложенная магия)",
-					])
-				]),
-				new Block\BlockAppend([
-					new Layout([
-						"Дополнительные элементы авторизации",
-					])
-				])
-			],
-			
-			'footer' => [
-				new Block\BlockPrepend(['Поставим перед футером']),
-			],
-		    
-		]), $lay);
-		
-		echo $lay->render();
-		*/
+		return $path;
 	}
 	
+	public function startWith($with, $in, &$resultEnding = null){
+		$l = strlen($with);
+		if(substr( $in, 0, $l) !== $with){
+			return false;
+		}
+		$resultEnding = substr( $in, $l);
+		return true;
+	}
+	
+	public function testD(){
+		
+		$appDirname = dirname(__DIR__);
+		
+		$sourceDir  = FSGlob::path(null, [$appDirname, 'view/src']);
+		$destDir    = FSGlob::path(null, [$appDirname, 'view/dist']);
+		
+		$transpiler                 = new Transpiler($sourceDir, $destDir);
+		$transpiler->syntax         = new Syntax();
+		$transpiler->layerManager   = new LayerManager();
+		
+		$transpiler->process();
+		
+	}
 }
 
 

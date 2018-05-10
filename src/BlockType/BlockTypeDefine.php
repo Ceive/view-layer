@@ -5,10 +5,10 @@
  * @Project: ceive.view-layer
  */
 
-namespace Ceive\View\Layer\Block;
+namespace Ceive\View\Layer\BlockType;
 
 
-class BlockCascade extends BlockTarget{
+class BlockTypeDefine extends BlockTypeTarget{
 	
 }
 

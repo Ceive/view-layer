@@ -7,102 +7,98 @@
 
 namespace Ceive\View\Layer;
 
+use Ceive\View\Layer\BlockType\BlockType;
+
 
 /**
  * capture
  * cascade
  */
 
-abstract class Block{
+class Block extends AbstractEntity{
+	
+	/** @var  string */
+	public $name;
+	
+	/** @var  BlockType */
+	public $type;
 	
 	/** @var  Composition  */
-	protected $composition;
+	public $composition;
 	
-	/** @var  null|BlockHolder[] */
-	protected $holdsIn;
+	
+	/** @var  string */
+	public $raw;
 	
 	/** @var array|null  */
 	public $contents = [];
 	
 	
+	/** @var  Holder[] */
+	public $holders = [];
+	
+	/** @var  Holder[]  */
+	public $holdersRegistry = [];
+	
+	/** @var  null|Holder[] */
+	protected $_holdsIn;
+	
+	
 	/**
 	 * Block constructor.
-	 * @param null $contents
 	 */
-	public function __construct($contents = null){
-		if(!is_array($contents)){
-			if($contents){
+	public function __construct(BlockType $type){
+		$this->type = $type;
+	}
+	
+	
+	/**
+	 * @param null|array|string $contents
+	 * @param bool $merge
+	 * @return $this
+	 */
+	public function setContents($contents = null, $merge = false){
+		
+		if(!$merge){
+			
+			if(!$contents){
+				$this->contents = [];
+			}else if(!is_array($contents)){
 				$this->contents = [$contents];
+			}else{
+				$this->contents = $contents;
 			}
 		}else{
-			$this->contents = $contents;
+			if($contents){
+				if(!is_array($contents)){
+					$contents = [$contents];
+				}
+				$this->contents = array_merge($this->contents, $contents);
+			}
 		}
+		return $this;
 	}
 	
 	/**
 	 * @return bool
 	 */
-	public function isHolds(){
-		return $this->holdsIn !== null;
+	public function isPicked(){
+		return !empty($this->_holdsIn);
 	}
-	
-	/**
-	 * @param Composition $composition
-	 * @return $this
-	 */
-	public function setComposition(Composition $composition){
-		$this->composition = $composition;
-		return $this;
-	}
-	
-	/**
-	 * @return Composition
-	 */
-	public function getComposition(){
-		return $this->composition;
-	}
-	
-	
-	/**
-	 * @param BlockHolder $holder
-	 * @return $this
-	 */
-	public function addHoldsIn(BlockHolder $holder){
-		if(!in_array($holder, $this->holdsIn, true)){
-			$this->holdsIn[] = $holder;
-		}
-		return $this;
-	}
-	
-	/**
-	 * @param BlockHolder $holder
-	 * @return $this
-	 */
-	public function removeHoldsIn(BlockHolder $holder){
-		if(!$this->holdsIn)return $this;
-		if(($i = array_search($holder, $this->holdsIn, true))){
-			array_splice($this->holdsIn, $i,1);
-		}
-		return $this;
-	}
-	
 	/**
 	 * Pick-up to preferred holder
 	 */
 	public function pick(){
-		$name = $this->composition->getName();
-		$lay = $this->composition->getLay();
-		$holders = $this->findHolders($name, $lay);
-		
-		foreach($this->contents as $content){
-			if($content instanceof Layout){
-				$content->setLay($lay);
+		if(!$this->isPicked()){
+			$layer = $this->composition->layer;
+			$holders = $this->_searchHoldersForPick($layer);
+			
+			foreach($holders as $holder){
+				$this->attachToHolder($holder);
 			}
 		}
 		
-		foreach($holders as $holder){
-			$this->addToHolder($holder);
-		}
+		
 		return $this;
 	}
 	
@@ -110,29 +106,108 @@ abstract class Block{
 	 * unpick from picked holders
 	 */
 	public function unpick(){
-		$holdsIn = $this->holdsIn; $this->holdsIn = [];
-		foreach($holdsIn as $holder){
-			$holder->detachBlock($this);
+		if($this->isPicked()){
+			$holdsIn = $this->_holdsIn;
+			$this->_holdsIn = null;
+			foreach($holdsIn as $holder){
+				$this->detachFromHolder($holder);
+			}
 		}
 		return $this;
 	}
 	
-	/**
-	 * @param $name
-	 * @param Lay $lay
-	 * @return BlockHolder[]
-	 */
-	abstract protected function findHolders($name, Lay $lay);
 	
-	protected function addToHolder(BlockHolder $holder){
-		$this->holdsIn[] = $holder;
+	/**
+	 * @param Layer $layer
+	 * @return Holder[]
+	 */
+	protected function _searchHoldersForPick(Layer $layer){
+		return $this->type->searchHoldersForPick($this, $layer);
+	}
+	
+	/**
+	 * @param Holder $holder
+	 */
+	protected function attachToHolder(Holder $holder){
+		$this->_holdsIn[] = $holder;
+		$this->type->attachToHolder($this, $holder);
+	}
+	
+	/**
+	 * @param Holder $holder
+	 */
+	protected function detachFromHolder(Holder $holder){
+		$i = array_search($holder, $this->_holdsIn, true);
+		if($i!==false){
+			array_splice($this->_holdsIn, $i,1);
+		}
+		$this->type->detachFromHolder($this, $holder);
+	}
+	
+	
+	/**
+	 *
+	 * @return Holder[]
+	 */
+	public function getContainHoldersBy($searchName = null){
+		// todo с учетом вложенности в композиции composition.holder
+		$holders = [];
+		foreach($this->holders as $holder){
+			if($holder->getPath() === $searchName){
+				$holders[] = $holder;
+			}
+		}
+		
+		return $holders;
 	}
 	
 	/**
 	 * @return int|mixed|null
 	 */
 	public function getLevel(){
-		return $this->composition?$this->composition->getLay()->getLevel():null;
+		return $this->composition?$this->composition->layer->getLevel():null;
+	}
+	
+	/**
+	 * @return array of Holder[]
+	 */
+	public function getContainHolders(){
+		$holders = [];
+		foreach($this->holders as $holder){
+			if(!isset($holders[$holder->name])){
+				$holders[$holder->name] = [];
+			}
+			$holders[$holder->name][] = $holder;
+		}
+		return $holders;
+	}
+	
+	public function getContents(){
+		return $this->contents;
+	}
+	
+	/**
+	 * @param $name
+	 * @param null $identifier
+	 * @return Holder
+	 */
+	public function registerHolder($name, $identifier = null){
+		if($identifier!==null){
+			$identifier = (string) $identifier;
+			if(!isset($this->holdersRegistry[$identifier])){
+				$holder = $this->holdersRegistry[$identifier] = new Holder($name);
+				$this->holders[] = $holder;
+				
+				$holder->ownerBlock = $this;
+				
+			}
+			return $this->holdersRegistry[$identifier];
+		}else{
+			$holder = new Holder($name);
+			$this->holders[] = $holder;
+			$holder->ownerBlock = $this;
+			return $holder;
+		}
 	}
 	
 }

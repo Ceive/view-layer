@@ -22,14 +22,16 @@ class Builder{
 	
 	public $dirname;
 	
-	public $parsed = [];
+	public $directoriesBreadcrumb = [];
 	
+	protected $filesCache = [];
 	
-	public $directoriesUsageHistory = [];
+	protected $matchedContents = [];
+	
 	
 	/**
 	 * @param array $definition
-	 * @return Lay|null
+	 * @return Layer|null
 	 */
 	public function build(array $definition){
 		$lay = null;
@@ -49,7 +51,7 @@ class Builder{
 				$item['layer'] = $item['layer'] ? [ $item['layer'] ] : [];
 			}
 			foreach($item['layer'] as $layer){
-				$layer = $this->parseLayFile($layer, true);
+				$layer = $this->parseForLay($layer, true);
 				if($layer){
 					if($item['params']){
 						$layer = $layer->setContext($item['params']);
@@ -66,312 +68,51 @@ class Builder{
 	
 	/**
 	 * @param $path
-	 * @return Layout|null
+	 * @return mixed
 	 */
-	public function parseLayoutFile($path, $enableRelative = false){
-		
-		if($enableRelative && substr($path, 0, 1) === '/'){
-			$path = $this->dirname . $path;
-		}
-		
-		if(file_exists($path)){
-			try{
-				$content = file_get_contents($path);
-				$this->directoriesUsageHistory[] = dirname($path);
-				return $this->parseLayout($content);
-			}finally{
-				array_pop($this->directoriesUsageHistory);
-			}
-		}
-		return null;
-	}
-	
-	/**
-	 * @param $path
-	 * @param bool $enableRelative
-	 * @return Lay|null
-	 */
-	public function parseLayFile($path, $enableRelative = false){
-		
-		if($enableRelative && substr($path, 0, 1) === '/'){
-			$path = $this->dirname . $path;
-		}
-		
-		if(file_exists($path)){
-			try{
-				$content = file_get_contents($path);
-				$this->directoriesUsageHistory[] = dirname($path);
-				return $this->parseLay($content);
-			}finally{
-				array_pop($this->directoriesUsageHistory);
-			}
-		}
-		return null;
-	}
-	
-	
-	/**
-	 * @param $content
-	 * @return Composition[]|Layout|null
-	 */
-	public function parse($content){
-		$compositions = $this->parseCompositions($content);
-		if(!$compositions){
-			return $this->parseLayout($content);
-		}
-		return $compositions;
-	}
-	
-	/**
-	 * @param $content
-	 * @return Lay|null
-	 */
-	public function parseLay($content){
-		
-		if(!$content){
-			return null;
-		}
-		
-		$a = $this->parse($content);
-		if(is_array($a)){
-			$lay = new Lay();
-			$lay->setCompositions($a);
-		}else if($a instanceof Layout){
-			$lay = new Lay();
-			$lay->setCompositions([
-				':main' => new Composition(new BlockCascade([$a]))
-			]);
-		}else{
-			return null;
-		}
-		return $lay;
-	}
-	
-	public function getRegex(){
-		$regex = /** @lang RegExp */
-			'@
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)/\]|
-		\[(([\w\-]+)(\s*([\w_\-]+)=(\'|")[^\'"\\\\]+\g{-1})*)\]
-			((?R)*)
-		\[/\g{-5}\]|
-		<script[^>]+>[^<]+</script>|
-		<style[^>]+>[^<]+</style>|
-		[^\[]+@smx';
-		return $regex;
-	}
-	
-	/**
-	 * @param $content
-	 * @return array|null
-	 */
-	public function parseCompositions($content){
-		
-		if(!$content){
-			return [];
-		}
-		
-		$regex = $this->getRegex();
-		
-		$compositions = [];
-		
-		if(preg_match_all($regex,$content, $matches, PREG_SET_ORDER)){
-			
-			
-			foreach($matches as $m){
-				
-				$block  = null;
-				$name   = null;
-				
-				switch(true){
-					
-					case !empty($m[1]):
-						$o = isset($m[1])?$m[1]:null;
-						list($name, $block) = $this->parseBlock($o, null);
-						break;
-					case !empty($m[6]):
-						$o = $m[6];
-						$c = isset($m[11])?$m[11]:null;
-						list($name, $block) = $this->parseBlock($o, $c);
-				}
-				
-				
-				if($block){
-					
-					if(!$name){
-						$name = ':main';
-					}
-					
-					if(!isset($compositions[$name])){
-						$compositions[$name] = [
-							'target'    => null,
-						    'prepends'  => [],
-						    'appends'   => [],
-						];
-					}
-					
-					switch(true){
-						case $block instanceof BlockAppend; $compositions[$name]['appends'][] = $block; break;
-						case $block instanceof BlockPrepend; $compositions[$name]['prepends'][] = $block; break;
-						case $block instanceof BlockTarget; $compositions[$name]['target'] = $block; break;
-					}
+	public function loadFile($path){
+		if(!isset($this->filesCache[$path])){
+			if(!file_exists($path)){
+				$this->filesCache[$path] = false;
+			}else{
+				try{
+					$this->filesCache[$path] = file_get_contents($path);
+				}finally{
+					array_pop($this->directoriesBreadcrumb);
 				}
 			}
 			
 		}
-		
-		foreach($compositions as $name => &$composition){
-			if($composition['target'] || $composition['prepends'] || $composition['appends']){
-				$composition = new Composition($composition['target'], $composition['prepends'], $composition['appends']);
-			}
-		}
-		
-		return $compositions;
+		return $this->filesCache[$path];
 	}
 	
 	/**
 	 * @param $content
-	 * @return Layout|null
+	 * @param null $open
+	 * @param null $close
+	 * @return mixed
 	 */
-	public function parseLayout($content){
-		
-		if(!$content){
-			return null;
-		}
-		
-		$regex = $this->getRegex();
-		
-		$layout = new Layout();
-		
-		if(preg_match_all($regex,$content, $matches, PREG_SET_ORDER)){
-			
-			
-			foreach($matches as $m){
-				
-				
-				switch(true){
-					
-					case !empty($m[1]):
-						$o = isset($m[1])?$m[1]:null;
-						$holder = $this->parseHolder($o, null);
-						if($holder){
-							$layout->add($holder);
-						}
-						break;
-					case !empty($m[6]):
-						$o = $m[6];
-						$c = isset($m[11])?$m[11]:null;
-						$holder = $this->parseHolder($o, $c);
-						if($holder){
-							$layout->add($holder);
-						}
-						break;
-					default:
-						if(trim($m[0])){
-							$layout->add( new SimpleElement(ltrim($m[0], "\r\n")));
-						}
-						break;
-				}
+	protected function matchContent($content, $open=null, $close = null){
+		$open = $open?:'[';
+		$close = $close?:']';
+		$key = md5($content . "{$open}{$close}");
+		if(!isset($this->matchedContents[$key])){
+			$regexp = $this->makeRegexp($open,$close);
+			if(preg_match_all($regexp, $content, $matches, PREG_SET_ORDER)){
+				$this->matchedContents[$key] = $matches;
+			}else{
+				$this->matchedContents[$key] = false;
 			}
-			
 		}
-		
-		return $layout;
+		return $this->matchedContents[$key];
 	}
 	
-	
-	/**
-	 * @return string
-	 */
-	public function getTagAttributeRegex(){
-		return '([\w_\-]+)=(\'|")(\\\\\\\\|\\\\\g{-2}|[^\\\\])*\g{-2}';
-	}
-	
-	/**
-	 * @return string
-	 */
-	public function getTagRegex(){
-		return '([\w_\-]+)\s*';
-	}
-	
-	
-	/**
-	 * @param $definition
-	 * @return array [type,name,additions[]]
-	 */
-	public function parseTag($definition){
-		
-		$name       = null;
-		$attributes = [];
-		
-		if(preg_match('@([\w_\-]+)\s*(.*)@', $definition, $m)){
-			$name = $m[1];
-			$attributes = $this->parseAttributes($m[2]);
-		}
-		return [$name, $attributes];
-		
-	}
 	
 	/**
 	 * @return mixed
 	 */
 	public function getCurrentDir(){
-		return $this->directoriesUsageHistory?end($this->directoriesUsageHistory):$this->dirname;
-	}
-	
-	/**
-	 * @param $definition
-	 * @param $content
-	 * @return array [name, block]
-	 * @throws \Exception
-	 */
-	public function parseBlock($definition, $content){
-		
-		list($tag, $attributes) = $this->parseTag($definition);
-		
-		if($tag !== 'block'){
-			return [null,null];
-		}
-		
-		$name = isset($attributes['name'])?$attributes['name']:null;
-		$type = isset($attributes['type']) && $attributes['type']?$attributes['type']:null;
-		if(!isset($content)){
-			$include = isset($attributes['inc'])?$attributes['inc']:null;
-			if($include)$content = $this->inc($include);
-		}else{
-			$content = $this->parseLayout($content);
-		}
-		
-		
-		
-		switch($type){
-			
-			case 'prepend':
-				$block = new BlockPrepend([$content]);
-				break;
-			case 'append':
-				$block = new BlockAppend([$content]);
-				break;
-			
-			case 'define':
-				$block = new BlockDefine([$content]);
-				break;
-			case 'replace':
-				$block = new BlockReplace([$content]);
-				break;
-			
-			case 'cascade':
-			case null:
-				$block = new BlockCascade([$content]);
-				break;
-				
-				
-			default:
-				throw new \Exception("Unknown block type '{$type}'");
-				break;
-			
-		}
-		
-		return [$name, $block];
+		return $this->directoriesBreadcrumb?end($this->directoriesBreadcrumb):$this->dirname;
 	}
 	
 	/**
@@ -384,46 +125,284 @@ class Builder{
 		}else{
 			$path = $this->getCurrentDir() . '/' . $path;
 		}
-		return $this->parseLayoutFile($path, false);
+		return $this->parseForLayout($path, false);
+	}
+	
+	/**
+	 * @param $path
+	 * @return Layout|null
+	 */
+	public function parseForLayout($path, $enableRelative = false){
+		if($enableRelative && substr($path, 0, 1) === '/'){
+			$path = $this->dirname . $path;
+		}
+		if(($content = $this->loadFile($path))!==false){
+			try{
+				$this->directoriesBreadcrumb[] = dirname($path);
+				return $this->buildLayout($content);
+			}finally{
+				array_pop($this->directoriesBreadcrumb);
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * @param $path
+	 * @param bool $enableRelative
+	 * @return Layer|null
+	 */
+	public function parseForLay($path, $enableRelative = false){
+		
+		if($enableRelative && substr($path, 0, 1) === '/'){
+			$path = $this->dirname . $path;
+		}
+		
+		if(($content = $this->loadFile($path))!==false){
+			try{
+				$this->directoriesBreadcrumb[] = dirname($path);
+				return $this->buildLay($content);
+			}finally{
+				array_pop($this->directoriesBreadcrumb);
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * @param $content
+	 * @return Layer|null
+	 */
+	public function buildLay($content){
+		if(!$content){
+			return null;
+		}
+		$a = $this->parse($content);
+		if(is_array($a)){
+			$lay = new Layer();
+			$lay->setCompositions($a);
+		}else if($a instanceof Layout){
+			$lay = new Layer();
+			$lay->setCompositions([
+				':main' => new Composition(new BlockCascade([$a]))
+			]);
+		}else{
+			return null;
+		}
+		return $lay;
+	}
+	
+	
+	/**
+	 * @param $content
+	 * @return Composition[]|Layout|null
+	 */
+	public function parse($content){
+		$compositions = $this->buildCompositions($content);
+		if(!$compositions){
+			return $this->buildLayout($content);
+		}
+		return $compositions;
+	}
+	
+	
+	/**
+	 * @param array|string $content
+	 * @return array|null
+	 */
+	public function buildCompositions($content){
+		
+		if(!$content){
+			return [];
+		}
+		$elements = null;
+		if(is_array($content)){
+			$elements = $content;
+		}else{
+			$matches = $this->matchContent($content);
+			if($matches){
+				$elements = $this->processElements($matches);
+			}
+		}
+		
+		if($elements){
+			$blocks = [];
+			$_elements = [];
+			foreach($elements as $element){
+				if($element['type'] === 'tag' && $element['tag'] === 'block'){
+					$blocks[] = $element;
+				}else{
+					$_elements[] = $element;
+				}
+			}
+			$elements = $_elements;
+			
+			
+			$compositions = [];
+			$mainName = ':main';
+			$mainBlock = null;
+			foreach($blocks as $block){
+				
+				if(!isset($block['attributes']['name'])){
+					$block['attributes']['name'] = $mainName;
+				}
+				$name = $block['attributes']['name'];
+				if(!isset($block['attributes']['type'])){
+					$block['attributes']['type'] = null;
+				}
+				$isMain = $name === $mainName;
+				
+				if(!isset($compositions[$name])){
+					$compositions[$name] = [
+						'target'    => null,
+						'prepends'  => [],
+						'appends'   => [],
+					];
+				}
+				
+				/** @var Block $block */
+				$b = $this->makeBlock($block['attributes']['type']);
+				if(!isset($block['content'])){
+					if(isset($attributes['inc'])){
+						$content = $this->inc($attributes['inc']);
+					}else{
+						$content = null;
+					}
+				}else{
+					$content = $this->buildLayout($block['content']);
+				}
+				if($content){
+					$b->setContents($content);
+				}
+				if($isMain){
+					$mainBlock = $b;
+				}
+				
+				switch(true){
+					case $b instanceof BlockAppend;
+						$compositions[$name]['appends'][] = $b;
+						break;
+					
+					case $b instanceof BlockPrepend;
+						$compositions[$name]['prepends'][] = $b;
+						break;
+					
+					case $b instanceof BlockTarget;
+						$compositions[$name]['target'] = $b;
+						break;
+				}
+				
+			}
+			
+			if(!$blocks){
+				return [];
+			}
+			if($elements){
+				if(!$mainBlock){
+					$mainBlock = new BlockCascade();
+				}
+				
+				$layout = $this->buildLayout($elements);
+				if($layout){
+					$mainBlock->setContents([$layout], true);
+					if(!isset($compositions[$mainName])){
+						$compositions[$mainName] = [
+							'target'    => null,
+							'prepends'  => [],
+							'appends'   => [],
+						];
+					}
+					$compositions[$mainName]['target'] = $mainBlock;
+				}
+			}
+			
+			foreach($compositions as $name => &$composition){
+				if($composition['target'] || $composition['prepends'] || $composition['appends']){
+					$composition = new Composition($composition['target'], $composition['prepends'], $composition['appends']);
+				}
+			}
+			return $compositions;
+		}
+		return [];
+	}
+	
+	/**
+	 * @param $content
+	 * @return Layout|null
+	 */
+	public function buildLayout($content){
+		
+		$elements = null;
+		if(is_array($content)){
+			$elements = $content;
+		}else{
+			$matches = $this->matchContent($content);
+			if($matches){
+				$elements = $this->processElements($matches);
+			}
+		}
+		if($elements){
+			$layout = new Layout();
+			$els = [];
+			foreach($elements as $element){
+				if($element['type'] === 'tag' && $element['tag'] === 'holder'){
+					
+					$name = isset($element['attributes']['name'])?$element['attributes']['name']:null;
+					
+					$holder = $this->makeHolder();
+					$holder->name = $name;
+					if($element['content']){
+						$l = $this->buildLayout($element['content']);
+						$holder->targets[] = new BlockCascade([$l]);
+					}
+					$els[] = $holder;
+				}else if($element['type'] == 'plain'){
+					if(trim($element['content'])){
+						$els[] = new SimpleElement(ltrim($element['content'], "\r\n"));
+					}
+				}
+			}
+			
+			if(!$els){
+				return null;
+			}
+			
+			foreach($els as $el){
+				$layout->add($el);
+			}
+			
+			return $layout;
+		}
+		return null;
 	}
 	
 	/**
 	 * @param $definition
-	 * @param $content
-	 * @return BlockHolder|null
+	 * @return array
 	 */
-	public function parseHolder($definition, $content){
-		
-		list($tag, $attributes) = $this->parseTag($definition);
-		
-		if($tag !== 'holder'){
-			return null;
-		}
-		
-		$name = isset($attributes['name'])?$attributes['name']:null;
-		$holder = new BlockHolder($name);
-		if($content){
-			$layout = $this->parseLayout($content);
-			$holder->addTarget(new BlockCascade([$layout]));
-		}
-		
-		return $holder;
-	}
-	
 	public function parseAttributes($definition){
 		$attributes = [];
-		if(preg_match_all('@([\w_\-]+)(?:=(\'|")((?:\\\\\\\\|\\\\\g{-2}|[^\\\\])*?)\g{-2})?@', $definition, $matches, PREG_SET_ORDER)){
-			
+		if(preg_match_all($this->makeRegexpAttributes(), $definition, $matches, PREG_SET_ORDER)){
 			
 			foreach($matches as $match){
-				
 				$key = $match[1];
-				
-				
-				if(!isset($match[3])){
-					$value = true;
+				if(!empty($match[2]) || !empty($match[3])){
+					$value = !empty($match[2])?$match[2]:$match[3];
+					switch(true){
+						case strcasecmp($value,'false')==0: $value = false; break;
+						case strcasecmp($value,'true')==0:  $value = true;  break;
+						case strcasecmp($value,'null')==0:  $value = null;  break;
+						default:
+							// удаляем слеши перед кавычками
+							if(!empty($match[2])){
+								$value = strtr($value, ['\\"' => '"']);
+							}else{
+								$value = strtr($value, ['\\\'' => '\'']);
+							}
+							break;
+					}
 				}else{
-					$value = $match[3]==='false'?false:$match[3];
+					$value = true;
 				}
 				
 				$attributes[$key] = $value;
@@ -435,6 +414,94 @@ class Builder{
 	}
 	
 	
+	/**
+	 * @param $type
+	 * @return BlockAppend|BlockCascade|BlockDefine|BlockPrepend|BlockReplace
+	 * @throws \Exception
+	 */
+	public function makeBlock($type){
+		
+		switch($type){
+			
+			case 'prepend':
+				$block = new BlockPrepend();
+				break;
+			case 'append':
+				$block = new BlockAppend();
+				break;
+			
+			case 'define':
+				$block = new BlockDefine();
+				break;
+			case 'replace':
+				$block = new BlockReplace();
+				break;
+			
+			case 'cascade':
+			case null:
+				$block = new BlockCascade();
+				break;
+			
+			default:
+				throw new \Exception("Unknown block type '{$type}'");
+				break;
+			
+		}
+		return $block;
+	}
+	
+	/**
+	 * @return Holder
+	 */
+	public function makeHolder(){
+		return new Holder();
+	}
+	
+	
+	public function processElements(array $matches){
+		$elements = [];
+		foreach($matches as $m){
+			switch(true){
+				case !empty($m[1]):
+					
+					$elements[] = [
+						'type' => 'plain',
+						'content' => $m[1]
+					];
+					
+					break;
+				case !empty($m[2]): // with content
+					
+					$tagName    = $m[2];
+					$attributes = $m[3];
+					$content    = $m[8];
+					
+					$elements[] = [
+						'type'       => 'tag',
+						'tag'        => $tagName,
+						'attributes' => $this->parseAttributes($attributes),
+						'content'    => $content,
+					];
+					
+					break;
+				case !empty($m[9]): // without content
+					
+					$tagName    = $m[9];
+					$attributes = $m[10];
+					$content    = null;
+					
+					$elements[] = [
+						'type'       => 'tag',
+						'tag'        => $tagName,
+						'attributes' => $this->parseAttributes($attributes),
+						'content'    => $content,
+					];
+					
+					break;
+			}
+		}
+		return $elements;
+	}
 	
 }
 

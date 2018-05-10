@@ -5,44 +5,46 @@
  * @Project: ceive.view-layer
  */
 
-namespace Ceive\View\Layer\Block;
+namespace Ceive\View\Layer\BlockType;
 
 
 use Ceive\View\Layer\Block;
-use Ceive\View\Layer\BlockHolder;
-use Ceive\View\Layer\Lay;
+use Ceive\View\Layer\BlockType\BlockType;
+use Ceive\View\Layer\Holder;
+use Ceive\View\Layer\Layer;
 
 /**
  * @Author: Alexey Kutuzov <lexus27.khv@gmail.com>
  * Class BlockCoverer
  * @package Ceive\View\Layer\Block
  */
-class BlockCoverer extends Block{
+abstract class BlockTypeCoverer extends BlockType{
 	
 	
 	/**
-	 * @param $name
-	 * @param Lay $lay
-	 * @return BlockHolder[]
+	 * @param Block $block
+	 * @param Layer $layer
+	 * @return array|Holder[]
 	 */
-	protected function findHolders($name, Lay $lay){
+	public function searchHoldersForPick(Block $block, Layer $layer){
+		
+		
 		/**
-		 * @var $ancestors Lay[]
+		 * @var $ancestors Layer[]
 		 */
+		$ancestor = $layer->ancestor;
 		
-		$ancestor = $lay->getAncestor();
-		
-		$holders = [];
+		$holders   = [];
 		$ancestors = [];
 		
 		while($ancestor){
 			$ancestors[] = $ancestor;
-			$ancestor = $ancestor->getAncestor();
+			$ancestor = $ancestor->ancestor;
 		}
 		$ancestors = array_reverse($ancestors);
 		
 		foreach($ancestors as $ancestor){
-			$holders = $ancestor->searchHolders($name);
+			$holders = $ancestor->getContainHoldersBy($block->name);
 			if($holders){
 				break;
 			}
@@ -50,4 +52,5 @@ class BlockCoverer extends Block{
 		
 		return $holders;
 	}
+	
 }
