@@ -427,8 +427,10 @@ JSX;
 					$default = $holder->registerDefaultBlock($attributes['type']);
 					$default->raw = $el['children'];
 				}
-				
+				$block->contents[] = $holder;
 				return '{ ' . $this->_exprHolderGetContents($id) . ' }';
+			}else{
+				$block->contents[] = $all;
 			}
 			return $all;
 		});
