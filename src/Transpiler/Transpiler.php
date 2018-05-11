@@ -49,6 +49,9 @@ class Transpiler extends BaseAware{
 	/** @var  FSTransfer */
 	public $fsTransfer;
 	
+	public $onMainSave;
+	public $onLayerManagerSave;
+	
 	/** @var FileGenerator[] */
 	protected $_layerMap = [];
 	
@@ -151,6 +154,12 @@ class Transpiler extends BaseAware{
 		return $this;
 	}
 	
+	/** @var  ES6FileGenerator */
+	protected $mainScript;
+	/** @var  ES6FileGenerator */
+	protected $layerManagerScript;
+	
+	
 	public function process($clear = false){
 		if($clear)$this->clear();
 		
@@ -159,7 +168,7 @@ class Transpiler extends BaseAware{
 		
 		
 		// layerManager instance export
-		$managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
+		$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
 		$managerScript
 			->import('LayerManager', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
 			->body()
@@ -167,21 +176,36 @@ class Transpiler extends BaseAware{
 			->code('export default layerManager;');
 		
 		// Main script (ENTRY POINT)
-		$mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
+		$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
 		$mainScript->import('layerManager', $this->getLayerManagerJs() );
 		
 		foreach($this->_layerMap as $key => $layerScript){
 			$mainScript->import(null, $layerScript->path );
 		}
 		
+		
+		
 		$mainScript
 			->body()
 			->code('export default layerManager;');
+		
+		$this->onMainSave($mainScript);
+		$this->onLayerManagerSave($managerScript);
 		
 		$managerScript->save();
 		$mainScript->save();
 	}
 	
+	public function onMainSave(ES6FileGenerator $script){
+		if(is_callable($this->onMainSave)){
+			call_user_func($this->onMainSave, $script);
+		}
+	}
+	public function onLayerManagerSave(ES6FileGenerator $script){
+		if(is_callable($this->onLayerManagerSave)){
+			call_user_func($this->onLayerManagerSave, $script);
+		}
+	}
 	/**
 	 * @param null $dir
 	 * @return $this
@@ -410,7 +434,6 @@ JSX;
 		
 		if(!$source) $source = $block->source;
 		if(!$raw) $raw = $block->raw;
-		
 		
 		$content = $this->syntax->replaceBlockContent($raw,function($all, $el = null) use (&$holders, &$id, $block, $source){
 			if($el){
