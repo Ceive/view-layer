@@ -42,7 +42,7 @@ class Babel{
 					$this->config['presets'] = [];
 				}
 				$this->config['presets'][] = $prst;
-				array_unique($this->config['presets']);
+				/*array_unique($this->config['presets']);*/
 			}
 		}
 		return $this;
@@ -55,7 +55,7 @@ class Babel{
 	 */
 	public function plugin($name, array $options){
 		$this->config['plugins'][] = [$name, $options];
-		array_unique($this->config['plugins']);
+		/*array_unique($this->config['plugins']);*/
 		return $this;
 	}
 	
