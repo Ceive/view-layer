@@ -28,6 +28,12 @@ class FileGenerator implements \ArrayAccess{
 		$this->transpiler = $manager;
 	}
 	
+	/**
+	 * @param $code
+	 * @param string $indent
+	 * @param null $offset
+	 * @return $this
+	 */
 	public function code($code, $indent = '', $offset = null){
 		
 		$code = !$indent? $code : ($indent . strtr($code, ["\n" => "\n{$indent}"]));

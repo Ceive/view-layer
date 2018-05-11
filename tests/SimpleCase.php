@@ -214,10 +214,9 @@ JS;
 		$destDir    = FSGlob::path(null, [$appDirname, 'view/dist']);
 		
 		$transpiler                 = new Transpiler($sourceDir, $destDir);
-		$transpiler->syntax         = new Syntax();
-		$transpiler->layerManager   = new LayerManager();
-		
-		$transpiler->process();
+		$transpiler->entryPoint     = 'index.js';
+		$transpiler->layerManagerJs = 'layerManager.js';
+		$transpiler->process(true);
 		
 	}
 }

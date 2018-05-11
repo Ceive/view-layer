@@ -30,14 +30,14 @@ class Transpiler extends BaseAware{
 	 * В этом скрипте происходит импорт каждого слоя
 	 * @var string
 	 */
-	public $mainScriptPath      = '/main.js';
+	public $entryPoint      = '/main.js';
 	
 	/**
 	 * Путь относительно $base, для скрипта который экспортирует js object of class LayerManager.
 	 * Этот скрипт подключается в каждом файле слоя импортируя переменную layerManager
 	 * @var string
 	 */
-	public $managerScriptPath   = '/lm.js';
+	public $layerManagerJs   = '/lm.js';
 	
 	/**
 	 * php object of class LayerManager
@@ -45,7 +45,6 @@ class Transpiler extends BaseAware{
 	 */
 	public $layerManager;
 	
-	public $mlvExtension = 'mlv';
 	
 	/** @var  FSTransfer */
 	public $fsTransfer;
@@ -53,82 +52,123 @@ class Transpiler extends BaseAware{
 	/** @var FileGenerator[] */
 	protected $_layerMap = [];
 	
-	public function __construct($srcBase, $dstBase){
+	public $mlvExtension = 'mlv';
+	protected $includeExtensions = [];
+	
+	public function __construct($srcBase, $dstBase, Syntax $syntax = null, LayerManager $layerManager = null){
 		
-		$this->fsTransfer = $fs = new FSTransfer($srcBase, $dstBase);
+		if(!$syntax){
+			$syntax = new Syntax();
+		}
+		
+		if(!$layerManager){
+			$layerManager = new LayerManager();
+		}
+		
+		
+		$this->syntax = $syntax;
+		$this->layerManager = $layerManager;
 		
 		$this->base = $dstBase;
+		$this->fsTransfer = $fs = new FSTransfer($srcBase, $dstBase);
 		
 		$this->loader = new Loader();
 		$this->loader->base = $srcBase;
 		
-		$fs->task('/', function($src, $dst){
+		$fs->setListener(function($src, $dst){
 			
-			if(!is_dir($dst)){
+			if(is_dir($src) ){
+				
+				if(!is_dir($dst)){
+					
+					if(file_exists($dst)){
+						throw new \Exception(
+							"Could not create dir {$src} in {$dst}, destination path is busy by file or symlink, please check path"
+						);
+					}
+					
+					mkdir($dst, 0777, true);
+				}
+				
+			}else{
 				
 				if(file_exists($dst)){
-					throw new \Exception("Could not create dir {$src} in {$dst}, destination path is busy by file or symlink, please check path");
+					if(filemtime($src) > filemtime($dst)){
+						unlink($dst);
+					}else{
+						return;
+					}
 				}
 				
-				mkdir($dst, 0777, true);
-			}
-		});
-		
-		
-		
-		$fs->task([ '*.js', '*.css', '*.json',
-			'*.less', '*.scss',
-			'*.jsx', '*.ts',
-			
-			'*.jpg', '*.png', '*.jpeg',
-			'*.mp3', '*.ogg', '*.wav',
-			'*.mp4', '*.3gp' , '*.flv',
-			"*.{$this->mlvExtension}"
-		], function($src, $dst){
-			if(file_exists($dst)){
-				if(filemtime($src) > filemtime($dst)){
-					unlink($dst);
-				}else{
-					return false;
+				if(fnmatch( "*.{$this->mlvExtension}" , $src)){
+					$script = $this->processLayer($this->loader->relative($src));
+					$script->path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
+					$script->save();//TODO save control;
+					$this->_layerMap[$script->layer->key] = $script;
+					return;
+				}
+				
+				foreach($this->includeExtensions as $extension){
+					if(fnmatch("*.{$extension}", $src)){
+						copy($src, $dst);
+					}
 				}
 			}
-			return true;
-		});
-		
-		$fs->task([
-			'*.js', '*.css', '*.json',
-			'*.less', '*.scss',
-			'*.jsx', '*.ts',
 			
-			'*.jpg', '*.png', '*.jpeg',
-			'*.mp3', '*.ogg', '*.wav',
-			'*.mp4', '*.3gp' , '*.flv'
-		], function($src, $dst){ copy($src, $dst); });
-		
-		$fs->task([ "*.{$this->mlvExtension}" ], function($src, $dst){
-			$script = $this->processLayer($this->loader->relative($src));
-			$script->path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
-			$script->save();//TODO save control;
-			$this->_layerMap[$script->layer->key] = $script;
+			
 		});
+		
+		$this->addExtensions(
+			'js', 'css', 'json',
+			'less', 'scss',
+			'jsx', 'ts',
+			
+			'jpg', 'png', 'jpeg',
+			'mp3', 'ogg', 'wav',
+			'mp4', '3gp' , 'flv'
+		);
+		
 		
 	}
 	
-	public function process(){
+	public function addExtensions(...$extensions){
+		foreach($extensions as $ext){
+			if(is_array($ext)){
+				call_user_func_array([$this, 'includeExtensions'], $ext);
+			}else{
+				$this->includeExtensions[] = $ext;
+			}
+		}
+		return $this;
+	}
+	
+	/**
+	 * @param $mlvExtension
+	 * @return $this
+	 */
+	public function setMlvExtension($mlvExtension){
+		$this->mlvExtension = $mlvExtension;
+		return $this;
+	}
+	
+	public function process($clear = false){
+		if($clear)$this->clear();
+		
+		$fs = $this->fsTransfer;
+		$fs->glob->process();
 		
 		
-		$this->fsTransfer->glob->process();
-		
-		$managerScript = new ES6FileGenerator($this->getManagerScriptPath(), $this);
+		// layerManager instance export
+		$managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
 		$managerScript
-			->import('LayerManager', Raw::here('layer-manager'))
+			->import('LayerManager', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
 			->body()
-				->code('let layerManager = new LayerManager();')
-				->code('export default layerManager;');
+			->code('let layerManager = new LayerManager();')
+			->code('export default layerManager;');
 		
-		
-		$mainScript = new ES6FileGenerator( $this->getMainScriptPath() , $this);
-		$mainScript->import('layerManager', $this->getManagerScriptPath() );
+		// Main script (ENTRY POINT)
+		$mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
+		$mainScript->import('layerManager', $this->getLayerManagerJs() );
 		
 		foreach($this->_layerMap as $key => $layerScript){
 			$mainScript->import(null, $layerScript->path );
@@ -140,15 +180,24 @@ class Transpiler extends BaseAware{
 		
 		$managerScript->save();
 		$mainScript->save();
-		
-		$packageJsonPath = $this->fsTransfer->glob->padBase(
-			'package.json',
-			$this->fsTransfer->dstBase
-		);
-		if(!file_exists($packageJsonPath)){
-			exec("cd '{$this->fsTransfer->dstBase}' && npm init && npm i -g react react-dom react-babel babel-react");
+	}
+	
+	/**
+	 * @param null $dir
+	 * @return $this
+	 */
+	public function clear($dir = null){
+		if(!$dir){
+			$dir = $this->fsTransfer->dstBase;
 		}
-		
+		foreach(glob(FSGlob::p($dir, '*' )) as $path){
+			if(is_dir($path)){
+				$this->clear($path);
+			}else{
+				unlink($path);
+			}
+		}
+		return $this;
 	}
 	
 	/**
@@ -158,17 +207,17 @@ class Transpiler extends BaseAware{
 		$script = new ES6FileGenerator(null, $this);
 		$script
 			->import('React', Raw::here('react'))
-			->import('layerManager', $this->getManagerScriptPath() );
+			->import('layerManager', $this->getLayerManagerJs() );
 		
 		return $script;
 	}
 	
-	public function getManagerScriptPath(){
-		return $this->fsTransfer->glob->padBase($this->managerScriptPath, $this->fsTransfer->dstBase);
+	public function getLayerManagerJs(){
+		return $this->fsTransfer->glob->padBase($this->layerManagerJs, $this->fsTransfer->dstBase);
 	}
 	
-	public function getMainScriptPath(){
-		return $this->fsTransfer->glob->padBase($this->mainScriptPath, $this->fsTransfer->dstBase);
+	public function getEntryPoint(){
+		return $this->fsTransfer->glob->padBase($this->entryPoint, $this->fsTransfer->dstBase);
 	}
 	
 	/**
@@ -176,10 +225,9 @@ class Transpiler extends BaseAware{
 	 * @return ES6FileGenerator
 	 */
 	public function processLayer($path){
-		
 		return $this->loader->loadWrapped($path, function($absolute, $content) use($path){
 			$relative = $this->loader->relative($absolute);
-			$relative = FSGlob::path('/', [dirname($relative) , pathinfo($relative, PATHINFO_FILENAME)]);
+			$relative = FSGlob::path('/', [dirname($relative) , pathinfo($relative, PATHINFO_FILENAME)], true);
 			
 			$layer = $this->layerManager->registerLayer($relative);
 			
@@ -190,7 +238,6 @@ class Transpiler extends BaseAware{
 			
 			return $script;
 		});
-		
 	}
 	
 	/**

@@ -97,6 +97,21 @@ class FSGlob{
 	const NORMALIZE_SIMPLE  = 'simple';
 	const NORMALIZE_DOUBLES = 'doubles';
 	
+	
+	/**
+	 * @param $separator
+	 * @param array $segments
+	 * @return string
+	 */
+	public static function p($separator, ...$segments){
+		if(!in_array($separator,['\\','/'])){
+			array_unshift($segments, $separator);
+			return self::path(null, $segments);
+		}else{
+			return self::path($separator, $segments);
+		}
+	}
+	
 	/**
 	 * @param $sep
 	 * @param array $chunks

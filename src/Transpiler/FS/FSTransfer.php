@@ -18,9 +18,15 @@ class FSTransfer{
 	
 	public $tasks = [];
 	
+	public $listener;
 	
 	public function task($pattern, callable $handler){
 		$this->tasks[] = [!is_array($pattern)?[$pattern]:$pattern, $handler];
+		return $this;
+	}
+	
+	public function setListener(callable $fn = null){
+		$this->listener = $fn;
 		return $this;
 	}
 	
@@ -39,32 +45,39 @@ class FSTransfer{
 	
 	public function onDir($rel, $path){
 		$dst = $this->glob->padBase($rel, $this->dstBase);
-		foreach($this->tasks as list($patterns, $handler)){
-			foreach($patterns as $pattern){
-				if($pattern === '/'){
-					call_user_func($handler, $path, $dst);
-					break;
+		if(!$this->listener || (call_user_func($this->listener,  $path, $dst))!==false){
+			foreach($this->tasks as list($patterns, $handler)){
+				foreach($patterns as $pattern){
+					if($pattern === '/'){
+						call_user_func($handler, $path, $dst);
+						break;
+					}
 				}
 			}
 		}
+		
+		
+		
 	}
 	
 	public function onFile($rel, $path){
 		
 		$dst = $this->glob->padBase($rel, $this->dstBase);
-		
-		foreach($this->tasks as list($patterns, $handler)){
-			foreach($patterns as $pattern){
-				if($pattern === '/'){continue;}
-				if(fnmatch($pattern, $rel)){
-					if(call_user_func($handler, $path, $dst)===false){
-						break(2);
+		if(!$this->listener || (call_user_func($this->listener,  $path, $dst))!==false){
+			foreach($this->tasks as list($patterns, $handler)){
+				foreach($patterns as $pattern){
+					if($pattern === '/'){
+						continue;
 					}
-					break;
+					if(fnmatch($pattern, $rel)){
+						if(call_user_func($handler, $path, $dst) === false){
+							break(2);
+						}
+						break;
+					}
 				}
 			}
 		}
-		
 	}
 	
 	
