@@ -170,7 +170,7 @@ class Transpiler extends BaseAware{
 		// layerManager instance export
 		$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
 		$managerScript
-			->import('LayerManager', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
+			->import('Mlv, { LayerManager }', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
 			->body()
 			->code('let layerManager = new LayerManager();')
 			->code('export default layerManager;');
