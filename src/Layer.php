@@ -120,6 +120,13 @@ class Layer extends AbstractEntity{
 	}
 	
 	/**
+	 * @return Block|null
+	 */
+	public function requireMain(){
+		return $this->requireLikeBlockDefine(':main');
+	}
+	
+	/**
 	 * @return $this
 	 */
 	protected function pick(){
@@ -162,7 +169,7 @@ class Layer extends AbstractEntity{
 	 */
 	public function getContents(){
 		$this->pickChain();
-		$define = $this->requireLikeBlockDefine(':main');
+		$define = $this->requireMain();
 		return $define->getContents();
 	}
 	
