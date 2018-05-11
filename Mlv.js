@@ -290,6 +290,8 @@ export class LayerManager{
 		return this.blockTypes[typeKey];
 	}
 
+	keys;
+
 	_chain;
 
 	set chain(keys){
@@ -304,6 +306,7 @@ export class LayerManager{
 			ancestor = layer;
 		}
 		this._chain = layer;
+		this.keys = keys;
 		this.onChainUpdate();
 	}
 

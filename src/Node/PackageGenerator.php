@@ -21,8 +21,21 @@ class PackageGenerator{
 	protected $babel;
 	
 	
-	public function __construct($dirname){
+	public function __construct($dirname, $config = []){
 		$this->dirname = $dirname;
+		
+		$this->config = array_replace([
+			
+			'webDir'    => '/public/',
+			
+			'src'       => 'src',
+			'entry'     => 'src/main.js',
+			
+			'dist'      => 'dist',
+			'distJs'    => 'bundle.js',
+			'distCss'   => 'bundle.css',
+		
+		], $config);
 	}
 	
 	public function checkExists(){
@@ -34,7 +47,7 @@ class PackageGenerator{
 	}
 	
 	public function generate(){
-		$dirname = dirname(__DIR__);
+		$dirname = $this->dirname;
 		chdir($dirname);
 		
 		/// Generate package.json
@@ -69,24 +82,22 @@ class PackageGenerator{
 		$babel->plugin("transform-class-properties", ["spec" => true ]); // ES6 Class properties
 		$babel->build();
 		
-		
-		
 		$webpackConfig = <<<JS
 		
 const path = require("path");
-const dist = path.resolve(__dirname, "view/build");
-const src = path.resolve(__dirname, "view/dist");
+const dist = path.resolve(__dirname, "{$this->config['dist']}");
+const src =  path.resolve(__dirname, "{$this->config['src']}");
 		
 		
 module.exports = {
 	context: src,
 	entry: [
-		path.resolve(__dirname, "view/dist/main.js")
+		path.resolve(__dirname, "{$this->config['entry']}")
 	],
 	output: {
 		path: dist,
-		filename: "bundle.js",
-		publicPath: '/public/',
+		filename: "{$this->config['distJs']}",
+		publicPath: '{$this->config['webDir']}',
 	},
 	module: {
 
@@ -106,9 +117,9 @@ module.exports = {
 };
 JS;
 		file_put_contents($dirname . '/webpack.config.js', $webpackConfig);
-		
-		$package->npm('run build');
 	}
+	
+	
 	
 	
 	

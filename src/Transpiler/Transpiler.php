@@ -251,7 +251,7 @@ class Transpiler extends BaseAware{
 	public function processLayer($path){
 		return $this->loader->loadWrapped($path, function($absolute, $content) use($path){
 			$relative = $this->loader->relative($absolute);
-			$relative = FSGlob::path('/', [dirname($relative) , pathinfo($relative, PATHINFO_FILENAME)], true);
+			$relative = ltrim( FSGlob::path('/', [dirname($relative) , pathinfo($relative, PATHINFO_FILENAME)], true), '.\/');
 			
 			$layer = $this->layerManager->registerLayer($relative);
 			
