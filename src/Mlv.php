@@ -153,7 +153,7 @@ JS
 			'distJs'    => $this['client.jsBundleName'],
 			'distCss'   => $this['client.cssBundleName'],
 		]);
-		if($force || $pg->checkExists()){
+		if($force || !$pg->checkExists()){
 			$pg->generate();
 		}
 	}

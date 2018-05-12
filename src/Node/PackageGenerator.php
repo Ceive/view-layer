@@ -83,11 +83,13 @@ class PackageGenerator{
 		$babel->plugin("transform-class-properties", ["spec" => true ]); // ES6 Class properties
 		$babel->build();
 		
+		$dist = FSGlob::normalize($this->config['dist'],'/');
+		$src = FSGlob::normalize($this->config['src'],'/');
 		$webpackConfig = <<<JS
 		
 const path = require("path");
-const dist = "{$this->config['dist']}";
-const src =  "{$this->config['src']}";
+const dist = "{$dist}";
+const src =  "{$src}";
 		
 		
 module.exports = {
