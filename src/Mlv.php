@@ -17,6 +17,8 @@ class Mlv implements \ArrayAccess{
 	
 	protected $_config;
 	
+	public $transpiler;
+	
 	public function __construct(array $config = []){
 		
 		$this->setConfig(array_replace([
@@ -34,33 +36,23 @@ class Mlv implements \ArrayAccess{
 			
 			'html.rootID'         => 'main'
 		], $config));
-		
+		$this->transpiler = new Transpiler($this['views.src'], $this['client.src'], null, $this->layerManager);
 	}
 	
 	
 	public function interpret(){
 		// Compile MLV
-		$transpiler = new Transpiler($this['views.src'], $this['client.src'], null, $this->layerManager);
-		$transpiler->entryPoint      = $this['views.entryPoint'];
-		$transpiler->layerManagerJs  = 'layerManager.js';
-		$transpiler->onMainSave      = function(ES6FileGenerator $script){
+		$transpiler = $this->transpiler;
+		$transpiler->entryPoint     = $this['views.entryPoint'];
+		$transpiler->layerManagerJs = 'layerManager.js';
+		$transpiler->onMainSave = function(ES6FileGenerator $script){
 			$script->header()->code(
 				<<<JS
 				
 import React from 'react';
 import ReactDOM from 'react-dom';
 
-window['Mlv'] = layerManager;
-
 class App extends React.Component{
-	
-	componentDidMount(){
-		layerManager.onChainUpdate = () => {
-			this.setState({
-				actualLayers: layerManager.keys
-			});
-		};
-	}
 	
 	constructor(props){
 		super(props);
@@ -70,11 +62,18 @@ class App extends React.Component{
 	}
 	
 	render(){
-		return <div className="App">{ layerManager.chain? layerManager.chain.getContents(): null }</div>;
+		return <div className="App">{ layerManager.chain.getContents() }</div>;
 	}
 }
 
 let app = <App/>;
+window['Mlv'] = layerManager;
+//layerManager.chain = {};
+layerManager.onChainUpdate = function(){
+	app.setState({
+		actualLayers: layerManager.keys
+	});
+};
 
 ReactDOM.render(app, document.getElementById('{$this['html.rootID']}'));
 JS
