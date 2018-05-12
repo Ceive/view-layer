@@ -63,14 +63,15 @@ class Layer extends AbstractEntity{
 	 * @return Composition
 	 */
 	public function registerComposition($name){
-		if(!isset($this->compositions[$name])){
+		$key = $name===null?':main':$name;
+		if(!isset($this->compositions[$key])){
 			$composition = new Composition();
 			$composition->name = $name;
 			$composition->layer = $this;
 			
-			$this->compositions[$name] = $composition;
+			$this->compositions[$key] = $composition;
 		}
-		return $this->compositions[$name];
+		return $this->compositions[$key];
 	}
 	
 	/**
@@ -79,9 +80,10 @@ class Layer extends AbstractEntity{
 	 * @return Composition|null
 	 */
 	public function requireComposition($name, $delegateToAncestors = true){
+		$key = $name===null?':main':$name;
 		$compositions = $this->compositions;
-		if(isset($compositions[$name])){
-			return $compositions[$name];
+		if(isset($compositions[$key])){
+			return $compositions[$key];
 		}
 		if(!$delegateToAncestors){
 			return null;
@@ -96,9 +98,9 @@ class Layer extends AbstractEntity{
 	 * @return Block|null
 	 */
 	public function requireLikeBlockDefine($name, $delegateToAncestors = true){
-		
-		if(isset($this->compositions[$name])){
-			$target = $this->compositions[$name]->target;
+		$key = $name===null?':main':$name;
+		if(isset($this->compositions[$key])){
+			$target = $this->compositions[$key]->target;
 		}
 		
 		if(isset($target)){

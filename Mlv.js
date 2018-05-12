@@ -390,22 +390,25 @@ export class Layer{
 	}
 
 	registerComposition(name){
-		if(!this.compositions[name]){
-			this.compositions[name] = new Composition(name, this);
+		let key = name===null?':main':name;
+		if(!this.compositions[key]){
+			this.compositions[key] = new Composition(name, this);
 		}
-		return this.compositions[name];
+		return this.compositions[key];
 	}
 
 	requireComposition(name){
-		if(!this.compositions[name]){
-			throw new Error(`Composition by name ${name} not found`);
+		let key = name===null?':main':name;
+		if(!this.compositions[key]){
+			throw new Error(`Composition by name ${key} not found`);
 		}
-		return this.compositions[name];
+		return this.compositions[key];
 	}
 	getComposition(name, delegateToAncestors = true){
+		let key = name===null?':main':name;
 		let compositions = this.compositions;
-		if(compositions[name]){
-			return compositions[name];
+		if(compositions[key]){
+			return compositions[key];
 		}
 		if(!delegateToAncestors){
 			return null;
