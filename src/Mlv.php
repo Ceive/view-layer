@@ -77,7 +77,7 @@ ReactDOM.render(app, document.getElementById('{$this['html.rootID']}'));
 JS
 			);
 		};
-		$transpiler->process(true);
+		$transpiler->process();
 		if($transpiler->affectedFiles){
 			$this->_build();
 		}
