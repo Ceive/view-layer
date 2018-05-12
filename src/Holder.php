@@ -73,7 +73,6 @@ class Holder extends AbstractEntity{
 		if($this->name){
 			$path[] = $this->name;
 		}
-		
 		return $asArray===true?$path:($path?implode($asArray?:'.',$path): null);
 	}
 	

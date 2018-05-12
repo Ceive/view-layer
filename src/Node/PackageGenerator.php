@@ -35,6 +35,7 @@ class PackageGenerator{
 			'distJs'    => 'bundle.js',
 			'distCss'   => 'bundle.css',
 		
+			'webpackConfigName' => 'webpack.config.js'
 		], $config);
 	}
 	
@@ -85,14 +86,14 @@ class PackageGenerator{
 		$webpackConfig = <<<JS
 		
 const path = require("path");
-const dist = path.resolve(__dirname, "{$this->config['dist']}");
-const src =  path.resolve(__dirname, "{$this->config['src']}");
+const dist = "{$this->config['dist']}";
+const src =  "{$this->config['src']}";
 		
 		
 module.exports = {
 	context: src,
 	entry: [
-		path.resolve(__dirname, "{$this->config['entry']}")
+		path.resolve(src, "{$this->config['entry']}")
 	],
 	output: {
 		path: dist,
@@ -116,7 +117,7 @@ module.exports = {
 	}
 };
 JS;
-		file_put_contents($dirname . '/webpack.config.js', $webpackConfig);
+		file_put_contents($dirname . '/'.$this->config['webpackConfigName'], $webpackConfig);
 	}
 	
 	

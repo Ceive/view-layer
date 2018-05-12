@@ -51,6 +51,7 @@ class Transpiler extends BaseAware{
 	
 	public $onMainSave;
 	public $onLayerManagerSave;
+	public $affectedFiles;
 	
 	/** @var FileGenerator[] */
 	protected $_layerMap = [];
@@ -103,16 +104,20 @@ class Transpiler extends BaseAware{
 					}
 				}
 				
+				
+				
 				if(fnmatch( "*.{$this->mlvExtension}" , $src)){
 					$script = $this->processLayer($this->loader->relative($src));
 					$script->path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
 					$script->save();//TODO save control;
 					$this->_layerMap[$script->layer->key] = $script;
+					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
 					return;
 				}
 				
 				foreach($this->includeExtensions as $extension){
 					if(fnmatch("*.{$extension}", $src)){
+						$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
 						copy($src, $dst);
 					}
 				}
@@ -160,9 +165,18 @@ class Transpiler extends BaseAware{
 	protected $layerManagerScript;
 	
 	
+	public function hasAffectedExtensions(array $extensions){
+		foreach($extensions as $ext){
+			if(isset($this->affectedFiles[$ext])){
+				return true;
+			}
+		}
+		return false;
+	}
+	
 	public function process($clear = false){
 		if($clear)$this->clear();
-		
+		$this->affectedFiles = [];
 		$fs = $this->fsTransfer;
 		$fs->glob->process();
 		
@@ -679,7 +693,6 @@ JSX;
 				}
 		}
 	}
-	
 	
 	
 }
