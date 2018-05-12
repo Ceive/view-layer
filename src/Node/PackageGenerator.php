@@ -92,7 +92,8 @@ class PackageGenerator{
 const path = require("path");
 const dist = "{$dist}";
 const src =  "{$src}";
-		
+const distJs = "{$this->config['distJs']}";
+const webDir = "{$this->config['webDir']}";
 		
 module.exports = {
 	context: src,
@@ -101,8 +102,8 @@ module.exports = {
 	],
 	output: {
 		path: dist,
-		filename: "{$this->config['distJs']}",
-		publicPath: '{$this->config['webDir']}',
+		filename: distJs,
+		publicPath: webDir,
 	},
 	module: {
 
