@@ -50,7 +50,17 @@ class Mlv implements \ArrayAccess{
 import React from 'react';
 import ReactDOM from 'react-dom';
 
+window['Mlv'] = layerManager;
+
 class App extends React.Component{
+	
+	componentDidMount(){
+		layerManager.onChainUpdate = () => {
+			this.setState({
+				actualLayers: layerManager.keys
+			});
+		};
+	}
 	
 	constructor(props){
 		super(props);
@@ -65,13 +75,6 @@ class App extends React.Component{
 }
 
 let app = <App/>;
-window['Mlv'] = layerManager;
-//layerManager.chain = {};
-layerManager.onChainUpdate = function(){
-	app.setState({
-		actualLayers: layerManager.keys
-	});
-};
 
 ReactDOM.render(app, document.getElementById('{$this['html.rootID']}'));
 JS
