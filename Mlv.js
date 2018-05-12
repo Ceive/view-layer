@@ -299,11 +299,15 @@ export class LayerManager{
 		this.unMountChain();
 
 		let ancestor,layer;
+		let requiredKeys = [];
 		for(let key of keys){
-			layer = this.requireLayer(key);
-			layer.unpick();
-			layer.ancestor = ancestor||null;
-			ancestor = layer;
+			if(requiredKeys.indexOf(key)<0){
+				requiredKeys.push(key);
+				layer = this.requireLayer(key);
+				layer.unpick();
+				layer.ancestor = ancestor||null;
+				ancestor = layer;
+			}
 		}
 		this._chain = layer;
 		this.keys = keys;
