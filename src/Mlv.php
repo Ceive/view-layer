@@ -62,7 +62,7 @@ class App extends React.Component{
 	}
 	
 	render(){
-		return <div className="App">{ layerManager.chain.getContents() }</div>;
+		return <div className="App">{ layerManager.chain? layerManager.chain.getContents():null }</div>;
 	}
 }
 
