@@ -310,7 +310,7 @@ export class LayerManager{
 			}
 		}
 		this._chain = layer;
-		this.keys = keys;
+		this.keys = requiredKeys;
 		this.onChainUpdate();
 	}
 
