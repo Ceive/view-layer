@@ -43,7 +43,9 @@ class PackageGenerator{
 		
 		return file_exists(FSGlob::p($this->dirname, 'package.json')) &&
 		       is_dir(FSGlob::p($this->dirname, 'node_modules')) &&
-		       glob(FSGlob::p($this->dirname, 'node_modules','*'))
+		       glob(FSGlob::p($this->dirname, 'node_modules','*')) &&
+		       file_exists(FSGlob::p($this->dirname, 'webpack.config.json')) &&
+		       file_exists(FSGlob::p($this->dirname, '.babelrc'))
 			;
 	}
 	
