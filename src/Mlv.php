@@ -41,9 +41,9 @@ class Mlv implements \ArrayAccess{
 	public function interpret(){
 		// Compile MLV
 		$transpiler = new Transpiler($this['views.src'], $this['client.src'], null, $this->layerManager);
-		$transpiler->entryPoint     = $this['views.entryPoint'];
-		$transpiler->layerManagerJs = 'layerManager.js';
-		$transpiler->onMainSave = function(ES6FileGenerator $script){
+		$transpiler->entryPoint      = $this['views.entryPoint'];
+		$transpiler->layerManagerJs  = 'layerManager.js';
+		$transpiler->onMainSave      = function(ES6FileGenerator $script){
 			$script->header()->code(
 				<<<JS
 				
@@ -70,7 +70,7 @@ class App extends React.Component{
 	}
 	
 	render(){
-		return <div className="App">{ layerManager.chain.getContents() }</div>;
+		return <div className="App">{ layerManager.chain? layerManager.chain.getContents(): null }</div>;
 	}
 }
 
