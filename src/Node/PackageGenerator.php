@@ -86,8 +86,8 @@ class PackageGenerator{
 		$babel->plugin("transform-class-properties", ["spec" => true ]); // ES6 Class properties
 		$babel->build();
 		
-		$dist = FSGlob::cutBase(FSGlob::normalize($this->config['dist'],'/'), FSGlob::normalize($this->config['appRoot'],'/'));
-		$src = FSGlob::cutBase(FSGlob::normalize($this->config['src'],'/'), FSGlob::normalize($this->config['appRoot'],'/'));
+		$dist = ltrim( FSGlob::cutBase(FSGlob::normalize($this->config['dist'],'/'), FSGlob::normalize($this->config['appRoot'],'/')),'/');
+		$src = ltrim( FSGlob::cutBase(FSGlob::normalize($this->config['src'],'/'), FSGlob::normalize($this->config['appRoot'],'/')),'/');
 		
 		$webpackConfig = <<<JS
 		
