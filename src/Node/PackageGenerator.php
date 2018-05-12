@@ -50,11 +50,11 @@ class PackageGenerator{
 			return false;
 		}
 		
-		if(!glob(FSGlob::p($this->dirname, 'node_modules','*'))){
-			return false;
-		}
+		//if(!glob(FSGlob::p($this->dirname, 'node_modules','*'))){
+		//	return false;
+		//}
 		
-		if(!file_exists(FSGlob::p($this->dirname, 'webpack.config.json'))){
+		if(!file_exists(FSGlob::p($this->dirname, 'webpack.config.js'))){
 			return false;
 		}
 		
