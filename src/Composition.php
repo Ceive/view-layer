@@ -34,6 +34,7 @@ class Composition extends AbstractEntity{
 	/** @var bool  */
 	protected $picked = false;
 	
+	
 	/**
 	 * @return bool
 	 */

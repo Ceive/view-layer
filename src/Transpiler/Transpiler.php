@@ -321,7 +321,7 @@ class Transpiler extends BaseAware{
 		
 		
 		if(!$contents){
-			$composition = $layer->registerComposition(':main');
+			$composition = $layer->registerComposition(null);
 			
 			$block = $composition->registerBlock('cascade');
 			$block->params = [];

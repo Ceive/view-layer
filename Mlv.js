@@ -343,6 +343,10 @@ export class Layer{
 	scope = {};
 
 
+	static compName(name){
+		return name?name:Layer.COMPOSITION_MAIN;
+	}
+
 	get level(){
 		if(this.ancestor){
 			return this.ancestor.level + 1;
@@ -390,11 +394,11 @@ export class Layer{
 	}
 
 	registerComposition(name){
-		let key = name===null?':main':name;
-		if(!this.compositions[key]){
-			this.compositions[key] = new Composition(name, this);
+		let _propKey = Layer.compName(name);
+		if(!this.compositions[_propKey]){
+			this.compositions[_propKey] = new Composition(name, this);
 		}
-		return this.compositions[key];
+		return this.compositions[_propKey];
 	}
 
 	requireComposition(name){
@@ -405,10 +409,10 @@ export class Layer{
 		return this.compositions[key];
 	}
 	getComposition(name, delegateToAncestors = true){
-		let key = name===null?':main':name;
+		let _propKey = Layer.compName(name);
 		let compositions = this.compositions;
-		if(compositions[key]){
-			return compositions[key];
+		if(compositions[_propKey]){
+			return compositions[_propKey];
 		}
 		if(!delegateToAncestors){
 			return null;
@@ -418,12 +422,13 @@ export class Layer{
 
 
 
-	getCompositionTargetDefine(name, delegateToAncestors = true){
+	getCompositionTargetDefine(name = null, delegateToAncestors = true){
+		let _propKey = Layer.compName(name);
 		let compositions = this.compositions;
 		let target;
 
-		if(compositions[name]){
-			target = compositions[name].target;
+		if(compositions[_propKey]){
+			target = compositions[_propKey].target;
 		}
 		if(target && target.type instanceof BlockTypeDefine){
 			return target;
@@ -441,7 +446,7 @@ export class Layer{
 
 	getContents(){
 		this.pickChain();
-		let define = this.getCompositionTargetDefine(Layer.COMPOSITION_MAIN);
+		let define = this.getCompositionTargetDefine();
 		return define.getContents();
 	}
 

@@ -14,6 +14,8 @@ namespace Ceive\View\Layer;
  */
 class Layer extends AbstractEntity{
 	
+	const COMPOSITION_MAIN = ':main';
+	
 	/** @var  LayerManager */
 	public $manager;
 	
@@ -35,6 +37,10 @@ class Layer extends AbstractEntity{
 	protected $_level;
 	
 	public $raw;
+	
+	public static function compName($name = null){
+		return $name?:Layer::COMPOSITION_MAIN;
+	}
 	
 	/**
 	 * @return int|mixed
@@ -125,7 +131,7 @@ class Layer extends AbstractEntity{
 	 * @return Block|null
 	 */
 	public function requireMain(){
-		return $this->requireLikeBlockDefine(':main');
+		return $this->requireLikeBlockDefine(Layer::COMPOSITION_MAIN);
 	}
 	
 	/**
