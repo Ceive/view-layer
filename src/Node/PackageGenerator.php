@@ -26,6 +26,7 @@ class PackageGenerator{
 		
 		$this->config = array_replace([
 			
+			'appRoot'   => null,
 			'webDir'    => '/public/',
 			
 			'src'       => 'src',
@@ -76,7 +77,7 @@ class PackageGenerator{
 		$package->dependency('react');
 		$package->dependency('react-dom');
 		
-		$package->script('build', 'webpack --mode production');
+		$package->script('build', 'webpack --mode development');
 		
 		$package->build();
 		
@@ -85,13 +86,14 @@ class PackageGenerator{
 		$babel->plugin("transform-class-properties", ["spec" => true ]); // ES6 Class properties
 		$babel->build();
 		
-		$dist = FSGlob::normalize($this->config['dist'],'/');
-		$src = FSGlob::normalize($this->config['src'],'/');
+		$dist = FSGlob::cutBase(FSGlob::normalize($this->config['dist'],'/'), FSGlob::normalize($this->config['appRoot'],'/'));
+		$src = FSGlob::cutBase(FSGlob::normalize($this->config['src'],'/'), FSGlob::normalize($this->config['appRoot'],'/'));
+		
 		$webpackConfig = <<<JS
 		
 const path = require("path");
-const dist = "{$dist}";
-const src =  "{$src}";
+const dist = path.resolve(__dirname, "{$dist}");
+const src =  path.resolve(__dirname, "{$src}");
 const distJs = "{$this->config['distJs']}";
 const webDir = "{$this->config['webDir']}";
 		

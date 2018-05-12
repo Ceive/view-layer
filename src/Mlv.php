@@ -144,6 +144,7 @@ JS
 	 */
 	public function env($force = false){
 		$pg = new PackageGenerator($this->appRoot,[
+			'appRoot'   => FSGlob::normalize($this->appRoot,'/'),
 			'webDir'    => FSGlob::cutBase(FSGlob::normalize($this->webRoot,'/'),FSGlob::normalize($this->appRoot,'/')),
 			
 			'src'       => $this['client.src'],
