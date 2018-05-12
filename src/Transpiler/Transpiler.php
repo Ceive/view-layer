@@ -107,8 +107,22 @@ class Transpiler extends BaseAware{
 				
 				
 				if(fnmatch( "*.{$this->mlvExtension}" , $src)){
+					$path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
+					
+					if(file_exists($path)){
+						if(filemtime($path) > filemtime($path)){
+							unlink($path);
+						}else{
+							return;
+						}
+					}
+					
 					$script = $this->processLayer($this->loader->relative($src));
-					$script->path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
+					$script->path = $path;
+					
+					
+					
+					
 					$script->save();//TODO save control;
 					$this->_layerMap[$script->layer->key] = $script;
 					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
