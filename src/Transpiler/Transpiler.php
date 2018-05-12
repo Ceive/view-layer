@@ -461,7 +461,7 @@ JSX;
 		if(!$source) $source = $block->source;
 		if(!$raw) $raw = $block->raw;
 		if(!$raw){
-			return "''";
+			return "return [];";
 		}
 		$content = $this->syntax->replaceBlockContent($raw,function($all, $el = null) use (&$holders, &$id, $block, $source){
 			if($el){
