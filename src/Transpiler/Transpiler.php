@@ -284,7 +284,7 @@ class Transpiler extends BaseAware{
 			$script = $this->makeLayerGenerator();
 			$script->layer = $layer;
 			
-			$this->composeLayer($script, $layer, $content, ['file' => $absolute]);
+			$this->composeLayer($script, $layer, $content, ['file' => FSGlob::normalize($absolute,'/')]);
 			
 			return $script;
 		});
