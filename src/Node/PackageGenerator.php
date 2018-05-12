@@ -42,12 +42,27 @@ class PackageGenerator{
 	
 	public function checkExists(){
 		
-		return file_exists(FSGlob::p($this->dirname, 'package.json')) &&
-		       is_dir(FSGlob::p($this->dirname, 'node_modules')) &&
-		       glob(FSGlob::p($this->dirname, 'node_modules','*')) &&
-		       file_exists(FSGlob::p($this->dirname, 'webpack.config.json')) &&
-		       file_exists(FSGlob::p($this->dirname, '.babelrc'))
-			;
+		if(!file_exists(FSGlob::p($this->dirname, 'package.json'))){
+			return false;
+		}
+		
+		if(!is_dir(FSGlob::p($this->dirname, 'node_modules'))){
+			return false;
+		}
+		
+		if(!glob(FSGlob::p($this->dirname, 'node_modules','*'))){
+			return false;
+		}
+		
+		if(!file_exists(FSGlob::p($this->dirname, 'webpack.config.json'))){
+			return false;
+		}
+		
+		if(!file_exists(FSGlob::p($this->dirname, '.babelrc'))){
+			return false;
+		}
+		
+		return true;
 	}
 	
 	public function generate(){
