@@ -284,7 +284,7 @@ class Transpiler extends BaseAware{
 			$script = $this->makeLayerGenerator();
 			$script->layer = $layer;
 			
-			$this->composeLayer($script, $layer, $content);
+			$this->composeLayer($script, $layer, $content, ['file' => $absolute]);
 			
 			return $script;
 		});
@@ -460,7 +460,9 @@ JSX;
 		
 		if(!$source) $source = $block->source;
 		if(!$raw) $raw = $block->raw;
-		
+		if(!$raw){
+			return "''";
+		}
 		$content = $this->syntax->replaceBlockContent($raw,function($all, $el = null) use (&$holders, &$id, $block, $source){
 			if($el){
 				$id++;
@@ -483,7 +485,6 @@ JSX;
 			}
 			return $all;
 		});
-		
 		if( preg_match_all($this->syntax->regexpJSX(), $content, $matches) ){
 			
 			$elements = array_map(function($v){return trim($v);}, $matches[0]);
