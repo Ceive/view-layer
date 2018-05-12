@@ -194,34 +194,32 @@ class Transpiler extends BaseAware{
 		$fs = $this->fsTransfer;
 		$fs->glob->process();
 		
-		
-		// layerManager instance export
-		$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
-		$managerScript
-			->import('Mlv, { LayerManager }', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
-			->body()
-			->code('let layerManager = new LayerManager();')
-			->code('export default layerManager;');
-		
-		// Main script (ENTRY POINT)
-		$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
-		$mainScript->import('layerManager', $this->getLayerManagerJs() );
-		
-		foreach($this->_layerMap as $key => $layerScript){
-			$mainScript->import(null, $layerScript->path );
+		if($this->affectedFiles){
+			// layerManager instance export
+			$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
+			$managerScript
+				->import('Mlv, { LayerManager }', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
+				->body()
+				->code('let layerManager = new LayerManager();')
+				->code('export default layerManager;');
+			
+			// Main script (ENTRY POINT)
+			$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
+			$mainScript->import('layerManager', $this->getLayerManagerJs() );
+			
+			foreach($this->_layerMap as $key => $layerScript){
+				$mainScript->import(null, $layerScript->path );
+			}
+			$mainScript
+				->body()
+				->code('export default layerManager;');
+			
+			$this->onMainSave($mainScript);
+			$this->onLayerManagerSave($managerScript);
+			
+			$managerScript->save();
+			$mainScript->save();
 		}
-		
-		
-		
-		$mainScript
-			->body()
-			->code('export default layerManager;');
-		
-		$this->onMainSave($mainScript);
-		$this->onLayerManagerSave($managerScript);
-		
-		$managerScript->save();
-		$mainScript->save();
 	}
 	
 	public function onMainSave(ES6FileGenerator $script){
