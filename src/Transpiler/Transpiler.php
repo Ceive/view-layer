@@ -58,7 +58,7 @@ class Transpiler extends BaseAware{
 	/** @var string[] array of paths */
 	protected $_layerMapStore = [];
 	protected $_transferredFiles = [];
-	protected $imports;
+	protected $imports = [];
 	
 	public $mlvExtension = 'mlv';
 	protected $includeExtensions = [];
