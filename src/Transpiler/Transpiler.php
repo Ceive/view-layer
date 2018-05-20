@@ -196,8 +196,9 @@ class Transpiler extends BaseAware{
 	
 	public function process($clear = false){
 		try{
-			$this->_loadState();
-			if($clear)$this->clear();
+			if(!$this->_loadState() || $clear){
+				$this->clear();
+			}
 			$this->_touched = [];
 			$fs = $this->fsTransfer;
 			$fs->glob->process();
@@ -279,10 +280,12 @@ class Transpiler extends BaseAware{
 	protected function _loadState(){
 		
 		$mlvLock = $this->base . DIRECTORY_SEPARATOR . 'mlv.lock';
-		if(file_exists($mlvLock)){
+		$isExists = file_exists($mlvLock);
+		if($isExists){
 			$data = file_get_contents($mlvLock);
 			$data = json_decode($data, true);
 		}else{
+			
 			$data = [];
 		}
 		
@@ -291,6 +294,9 @@ class Transpiler extends BaseAware{
 			'layersMap'     => [],
 			'transferred'   => [],
 		],$data);
+		
+		
+		return $isExists;
 	}
 	
 	protected function _saveState(){
