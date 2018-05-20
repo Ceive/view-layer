@@ -115,7 +115,7 @@ JS
 			"<script> (function(){ window.Mlv.chain = ".json_encode($layersChain)."; 
 			/*
 			
-	window.Mlv.setup(".$this->exportLayersSetupIntoJS($layersChain).");
+	window.Mlv.setup(".'cv'/*'$this->exportLayersSetupIntoJS($layersChain)*/.");
 	
 	//FIXME: window.Mlv.chain = ".json_encode($layersChain)."; 
 	
