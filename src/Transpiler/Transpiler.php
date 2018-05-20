@@ -57,12 +57,16 @@ class Transpiler extends BaseAware{
 	protected $_layerMap = [];
 	/** @var string[] array of paths */
 	protected $_layerMapStore = [];
-	protected $_transferredFiles = [];
+	
+	
 	protected $imports = [];
+	protected $_state = [];
+	
+	
 	
 	public $mlvExtension = 'mlv';
 	protected $includeExtensions = [];
-	protected $_state = [];
+	
 	
 	public function __construct($srcBase, $dstBase, Syntax $syntax = null, LayerManager $layerManager = null){
 		
@@ -203,7 +207,16 @@ class Transpiler extends BaseAware{
 			$fs = $this->fsTransfer;
 			$fs->glob->process();
 			
-			if($this->affectedFiles){
+			
+			
+			$forceUpdate = false;
+			foreach($this->imports as $path){
+				if(!isset($this->_state['imported'][$path])){
+					$forceUpdate = true;
+				}
+			}
+			
+			if($forceUpdate || $this->affectedFiles){
 				
 				// layerManager instance export
 				$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
@@ -221,15 +234,21 @@ class Transpiler extends BaseAware{
 				foreach($this->imports as $path){
 					if(file_exists($path)){
 						
+						$this->_state['imported'][$path] = true;
 						if(isset($this->_state['transferred'][$path])){
 							$path = $this->_state['transferred'][$path];
 						}
 						
 						$mainScript->import(null, $path );
 					}else{
+						unset($this->_state['imported'][$path]);
+						
 						if(!isset($this->_state['transferred'][$path])){
 							unset($this->_state['transferred'][$path]);
 						}
+						
+						throw new \Exception("Import '{$path}' file not exists.");
+						
 					}
 				}
 				
@@ -270,6 +289,7 @@ class Transpiler extends BaseAware{
 		}
 		
 		$this->_state = array_replace([
+			'imported'     => [],
 			'layersMap'     => [],
 			'transferred'   => [],
 		],$data);
