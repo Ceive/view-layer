@@ -58,6 +58,8 @@ class Transpiler extends BaseAware{
 	/** @var string[] array of paths */
 	protected $_layerMapStore = [];
 	
+	protected $imports;
+	
 	public $mlvExtension = 'mlv';
 	protected $includeExtensions = [];
 	
@@ -208,6 +210,12 @@ class Transpiler extends BaseAware{
 				// Main script (ENTRY POINT)
 				$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
 				$mainScript->import('layerManager', $this->getLayerManagerJs() );
+				
+				foreach($this->imports as $path){
+					if(file_exists($path)){
+						$mainScript->import(null, $path );
+					}
+				}
 				
 				foreach($this->_layerMapStore as $key => $path){
 					if(file_exists($path)){
