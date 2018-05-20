@@ -51,7 +51,8 @@ class Transpiler extends BaseAware{
 	
 	public $onMainSave;
 	public $onLayerManagerSave;
-	public $_touched;
+	
+	public $_touched = [];
 	
 	
 	protected $imports = [];
