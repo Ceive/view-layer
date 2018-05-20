@@ -81,7 +81,7 @@ JS
 			);
 		};
 		$transpiler->process();
-		if($transpiler->affectedFiles){
+		if($transpiler->_touched){
 			$this->_build();
 		}
 	}
@@ -104,9 +104,29 @@ JS
 		);
 		
 		$headAssets = [ "<link rel='stylesheet' href='{$cssBundleUrl}'/>" ];
+		
+		
+		/**
+		 * @TODO: Layer.scope integration
+		 */
+		
 		$bodyAssets = [
 			"<script src='{$jsBundleUrl}'></script>",
-			"<script> (function(){ window.Mlv.chain = ".json_encode($layersChain)."; })() </script>"
+			"<script> (function(){ window.Mlv.chain = ".json_encode($layersChain)."; 
+			/*
+			
+	window.Mlv.setup(".$this->exportLayersSetupIntoJS($layersChain).");
+	
+	//FIXME: window.Mlv.chain = ".json_encode($layersChain)."; 
+	
+	
+	
+	// Clean the current script from page for beautiful looking a html page
+	// This script is needed only at the beginning when the page is initialized
+	document.currentScript.parent.removeChild(document.currentScript);
+	
+			*/
+			})() </script>"
 		];
 		
 		
@@ -140,6 +160,33 @@ JS
 		}
 		return $main;
 	}
+	/*
+	public function exportLayersSetupIntoJS(array $setup){
+		
+		
+		foreach($setup as $layer){
+			
+			$key = $layer['key'];
+			$scope = $layer['scope'];
+			
+			
+			if($scope){
+				foreach($scope as $key => $value){
+					
+					if($value instanceof ORMObject){
+						$value = "ModelManager.model('{$value->schema->key}', {$value->export()})";
+					}else if($value instanceof Route){
+						
+					}else{
+						
+					}
+					
+				}
+			}
+			
+		}
+		
+	}*/
 	
 	/**
 	 * Generate a outside program environment for cmd system
