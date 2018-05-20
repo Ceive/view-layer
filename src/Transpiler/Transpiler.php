@@ -57,11 +57,12 @@ class Transpiler extends BaseAware{
 	protected $_layerMap = [];
 	/** @var string[] array of paths */
 	protected $_layerMapStore = [];
-	
+	protected $_transferredFiles = [];
 	protected $imports;
 	
 	public $mlvExtension = 'mlv';
 	protected $includeExtensions = [];
+	protected $_state = [];
 	
 	public function __construct($srcBase, $dstBase, Syntax $syntax = null, LayerManager $layerManager = null){
 		
@@ -115,9 +116,12 @@ class Transpiler extends BaseAware{
 					$script->path = $dst;
 					
 					$script->save();//TODO save control;
-					$this->_layerMapStore[$script->layer->key] = $dst;
 					$this->_layerMap[$script->layer->key] = $script;
+					
 					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
+					
+					$this->_state['layerMap'][$script->layer->key] = $dst;
+					$this->_state['transferred'][$src] = $dst;
 					return;
 				}
 				
@@ -134,6 +138,8 @@ class Transpiler extends BaseAware{
 					if(fnmatch("*.{$extension}", $src)){
 						$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
 						copy($src, $dst);
+						$this->_state['transferred'][$src] = $dst;
+						break;
 					}
 				}
 			}
@@ -191,7 +197,7 @@ class Transpiler extends BaseAware{
 	
 	public function process($clear = false){
 		try{
-			$this->_loadLayerMap();
+			$this->_loadState();
 			if($clear)$this->clear();
 			$this->affectedFiles = [];
 			$fs = $this->fsTransfer;
@@ -211,19 +217,32 @@ class Transpiler extends BaseAware{
 				$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
 				$mainScript->import('layerManager', $this->getLayerManagerJs() );
 				
+				
 				foreach($this->imports as $path){
 					if(file_exists($path)){
+						
+						if(isset($this->_state['transferred'][$path])){
+							$path = $this->_state['transferred'][$path];
+						}
+						
 						$mainScript->import(null, $path );
+					}else{
+						if(!isset($this->_state['transferred'][$path])){
+							unset($this->_state['transferred'][$path]);
+						}
 					}
 				}
 				
-				foreach($this->_layerMapStore as $key => $path){
+				
+				foreach($this->_state['layerMap'] as $key => $path){
 					if(file_exists($path)){
 						$mainScript->import(null, $path );
 					}else{
-						unset($this->_layerMapStore[$key]);
+						unset($this->_state['layerMap'][$key]);
 					}
 				}
+				
+				
 				$mainScript
 					->body()
 					->code('export default layerManager;');
@@ -235,26 +254,30 @@ class Transpiler extends BaseAware{
 				$mainScript->save();
 			}
 		}finally{
-			$this->_saveLayerMap();
+			$this->_saveState();
 		}
 		
 	}
 	
-	protected function _loadLayerMap(){
+	protected function _loadState(){
+		
 		$mlvLock = $this->base . DIRECTORY_SEPARATOR . 'mlv.lock';
 		if(file_exists($mlvLock)){
 			$data = file_get_contents($mlvLock);
-			if($data){
-				$this->_layerMapStore = json_decode($data, true);
-			}
+			$data = json_decode($data, true);
 		}else{
-			$this->_layerMapStore = [];
+			$data = [];
 		}
+		
+		$this->_state = array_replace([
+			'layersMap'     => [],
+			'transferred'   => [],
+		],$data);
 	}
 	
-	protected function _saveLayerMap(){
+	protected function _saveState(){
 		$mlvLock = $this->base . DIRECTORY_SEPARATOR . 'mlv.lock';
-		file_put_contents($mlvLock, json_encode($this->_layerMapStore, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+		file_put_contents($mlvLock, json_encode($this->_state, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 	}
 	
 	

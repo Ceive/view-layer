@@ -29,7 +29,7 @@ class ES6FileGenerator extends FileGenerator{
 	}
 	
 	protected function _contents(){
-		
+		$imported = [];
 		foreach($this->_imports as list($as, $from, $indent, $offset)){
 			/** @see Raw::__invoke() */
 			if(is_callable($from)){
@@ -42,11 +42,14 @@ class ES6FileGenerator extends FileGenerator{
 			
 			$this->holdsTo = 'imports';
 			
-			$this->code("import{$as} '{$this->literal($from)}'", $indent, $offset);
+			$key = md5($as.$from);
+			
+			if(!in_array($key, $imported, true)){
+				$imported[] = $key;
+				$this->code("import{$as} '{$this->literal($from)}'", $indent, $offset);
+			}
+			
 		}
-		
-		
-		
 		
 		return array_merge($this->imports, [null], $this->header, [null],$this->body);
 	}
