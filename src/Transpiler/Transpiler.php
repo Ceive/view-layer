@@ -51,7 +51,7 @@ class Transpiler extends BaseAware{
 	
 	public $onMainSave;
 	public $onLayerManagerSave;
-	public $affectedFiles;
+	public $_touched;
 	
 	
 	protected $imports = [];
@@ -116,7 +116,7 @@ class Transpiler extends BaseAware{
 					
 					$script->save();//TODO save control;
 					
-					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
+					$this->_touched[pathinfo($src,PATHINFO_EXTENSION)][$dst] = $src;
 					
 					$this->_state['layersMap'][$script->layer->key] = $dst;
 					$this->_state['transferred'][$src] = $dst;
@@ -134,7 +134,7 @@ class Transpiler extends BaseAware{
 				
 				foreach($this->includeExtensions as $extension){
 					if(fnmatch("*.{$extension}", $src)){
-						$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
+						$this->_touched[pathinfo($src,PATHINFO_EXTENSION)][$dst] = $src;
 						copy($src, $dst);
 						$this->_state['transferred'][$src] = $dst;
 						break;
@@ -186,7 +186,7 @@ class Transpiler extends BaseAware{
 	
 	public function hasAffectedExtensions(array $extensions){
 		foreach($extensions as $ext){
-			if(isset($this->affectedFiles[$ext])){
+			if(isset($this->_touched[$ext])){
 				return true;
 			}
 		}
@@ -197,7 +197,7 @@ class Transpiler extends BaseAware{
 		try{
 			$this->_loadState();
 			if($clear)$this->clear();
-			$this->affectedFiles = [];
+			$this->_touched = [];
 			$fs = $this->fsTransfer;
 			$fs->glob->process();
 			
@@ -210,7 +210,7 @@ class Transpiler extends BaseAware{
 				}
 			}
 			
-			if($forceUpdate || $this->affectedFiles){
+			if($forceUpdate || $this->_touched){
 				
 				// layerManager instance export
 				$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
@@ -262,6 +262,9 @@ class Transpiler extends BaseAware{
 				
 				$this->onMainSave($mainScript);
 				$this->onLayerManagerSave($managerScript);
+				
+				$this->_touched['js'][$managerScript->path] = false;
+				$this->_touched['js'][$mainScript->path]    = false;
 				
 				$managerScript->save();
 				$mainScript->save();
