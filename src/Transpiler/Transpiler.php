@@ -55,6 +55,8 @@ class Transpiler extends BaseAware{
 	
 	/** @var FileGenerator[] */
 	protected $_layerMap = [];
+	/** @var string[] array of paths */
+	protected $_layerMapStore = [];
 	
 	public $mlvExtension = 'mlv';
 	protected $includeExtensions = [];
@@ -96,37 +98,34 @@ class Transpiler extends BaseAware{
 				
 			}else{
 				
-				if(file_exists($dst)){
-					if(filemtime($src) > filemtime($dst)){
-						unlink($dst);
-					}else{
-						return;
-					}
-				}
-				
-				
-				
 				if(fnmatch( "*.{$this->mlvExtension}" , $src)){
-					$path = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
+					$dst = FSGlob::path('/', [dirname($dst), pathinfo($dst, PATHINFO_FILENAME).'.js']);
 					
-					if(file_exists($path)){
-						if(filemtime($path) > filemtime($path)){
-							unlink($path);
+					if(file_exists($dst)){
+						if(filemtime($src) > filemtime($dst)){
+							unlink($dst);
 						}else{
 							return;
 						}
 					}
 					
 					$script = $this->processLayer($this->loader->relative($src));
-					$script->path = $path;
-					
-					
-					
+					$script->path = $dst;
 					
 					$script->save();//TODO save control;
+					$this->_layerMapStore[$script->layer->key] = $dst;
 					$this->_layerMap[$script->layer->key] = $script;
 					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
 					return;
+				}
+				
+				
+				if(file_exists($dst)){
+					if(filemtime($src) > filemtime($dst)){
+						unlink($dst);
+					}else{
+						return;
+					}
 				}
 				
 				foreach($this->includeExtensions as $extension){
@@ -189,38 +188,67 @@ class Transpiler extends BaseAware{
 	}
 	
 	public function process($clear = false){
-		if($clear)$this->clear();
-		$this->affectedFiles = [];
-		$fs = $this->fsTransfer;
-		$fs->glob->process();
-		
-		if($this->affectedFiles){
-			// layerManager instance export
-			$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
-			$managerScript
-				->import('Mlv, { LayerManager }', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
-				->body()
-				->code('let layerManager = new LayerManager();')
-				->code('export default layerManager;');
+		try{
+			$this->_loadLayerMap();
+			if($clear)$this->clear();
+			$this->affectedFiles = [];
+			$fs = $this->fsTransfer;
+			$fs->glob->process();
 			
-			// Main script (ENTRY POINT)
-			$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
-			$mainScript->import('layerManager', $this->getLayerManagerJs() );
-			
-			foreach($this->_layerMap as $key => $layerScript){
-				$mainScript->import(null, $layerScript->path );
+			if($this->affectedFiles){
+				
+				// layerManager instance export
+				$this->layerManagerScript = $managerScript = new ES6FileGenerator($this->getLayerManagerJs(), $this);
+				$managerScript
+					->import('Mlv, { LayerManager }', FSGlob::p(dirname(dirname(__DIR__)), 'Mlv'))
+					->body()
+					->code('let layerManager = new LayerManager();')
+					->code('export default layerManager;');
+				
+				// Main script (ENTRY POINT)
+				$this->mainScript = $mainScript = new ES6FileGenerator( $this->getEntryPoint() , $this);
+				$mainScript->import('layerManager', $this->getLayerManagerJs() );
+				
+				foreach($this->_layerMapStore as $key => $path){
+					if(file_exists($path)){
+						$mainScript->import(null, $path );
+					}else{
+						unset($this->_layerMapStore[$key]);
+					}
+				}
+				$mainScript
+					->body()
+					->code('export default layerManager;');
+				
+				$this->onMainSave($mainScript);
+				$this->onLayerManagerSave($managerScript);
+				
+				$managerScript->save();
+				$mainScript->save();
 			}
-			$mainScript
-				->body()
-				->code('export default layerManager;');
-			
-			$this->onMainSave($mainScript);
-			$this->onLayerManagerSave($managerScript);
-			
-			$managerScript->save();
-			$mainScript->save();
+		}finally{
+			$this->_saveLayerMap();
+		}
+		
+	}
+	
+	protected function _loadLayerMap(){
+		$mlvLock = $this->base . DIRECTORY_SEPARATOR . 'mlv.lock';
+		if(file_exists($mlvLock)){
+			$data = file_get_contents($mlvLock);
+			if($data){
+				$this->_layerMapStore = json_decode($data, true);
+			}
+		}else{
+			$this->_layerMapStore = [];
 		}
 	}
+	
+	protected function _saveLayerMap(){
+		$mlvLock = $this->base . DIRECTORY_SEPARATOR . 'mlv.lock';
+		file_put_contents($mlvLock, json_encode($this->_layerMapStore, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+	}
+	
 	
 	public function onMainSave(ES6FileGenerator $script){
 		if(is_callable($this->onMainSave)){
