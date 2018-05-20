@@ -53,11 +53,6 @@ class Transpiler extends BaseAware{
 	public $onLayerManagerSave;
 	public $affectedFiles;
 	
-	/** @var FileGenerator[] */
-	protected $_layerMap = [];
-	/** @var string[] array of paths */
-	protected $_layerMapStore = [];
-	
 	
 	protected $imports = [];
 	protected $_state = [];
@@ -120,11 +115,10 @@ class Transpiler extends BaseAware{
 					$script->path = $dst;
 					
 					$script->save();//TODO save control;
-					$this->_layerMap[$script->layer->key] = $script;
 					
 					$this->affectedFiles[pathinfo($src,PATHINFO_EXTENSION)][] = $src;
 					
-					$this->_state['layerMap'][$script->layer->key] = $dst;
+					$this->_state['layersMap'][$script->layer->key] = $dst;
 					$this->_state['transferred'][$src] = $dst;
 					return;
 				}
@@ -253,11 +247,11 @@ class Transpiler extends BaseAware{
 				}
 				
 				
-				foreach($this->_state['layerMap'] as $key => $path){
+				foreach($this->_state['layersMap'] as $key => $path){
 					if(file_exists($path)){
 						$mainScript->import(null, $path );
 					}else{
-						unset($this->_state['layerMap'][$key]);
+						unset($this->_state['layersMap'][$key]);
 					}
 				}
 				
