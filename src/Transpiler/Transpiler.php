@@ -515,8 +515,8 @@ class Transpiler extends BaseAware{
 	$.block.getContents = function(){
 		return ((scope) => {
 			for (let ___p in scope){
-			  if(scope.hasOwnProperty(p))
-			    eval("const " + ___p + " = scope[___p];");
+			  if(scope.hasOwnProperty(___p))
+			    eval("let " + ___p + " = scope[___p];");
 			}
 			{$componentCode}
 		})( this.composition && this.composition.layer ? this.composition.layer.scope : {} );
