@@ -305,6 +305,8 @@ export class LayerManager{
 
 		this.setupLayers = {};
 
+		let ancestor = null, layer;
+
 		for(let layerOptions of layers){
 
 			if(typeof layerOptions === 'string'){
@@ -312,7 +314,7 @@ export class LayerManager{
 			}
 
 			let {key, scope} = layerOptions;
-			let ancestor = null, layer;
+
 			if(!this.setupLayers[key]){
 				layer = this.requireLayer(key);
 				layer.unpick();
