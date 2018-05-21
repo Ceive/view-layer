@@ -112,21 +112,16 @@ JS
 		
 		$bodyAssets = [
 			"<script src='{$jsBundleUrl}'></script>",
-			"<script> (function(){ window.Mlv.chain = ".json_encode($layersChain)."; 
-			/*
-			
-	window.Mlv.setup(".'cv'/*'$this->exportLayersSetupIntoJS($layersChain)*/.");
-	
-	//FIXME: window.Mlv.chain = ".json_encode($layersChain)."; 
-	
+			"<script> 
+(function(){ 
+	window.Mlv.setup(" . $this->exportSetup($layersChain) . ");
 	
 	
 	// Clean the current script from page for beautiful looking a html page
 	// This script is needed only at the beginning when the page is initialized
 	document.currentScript.parent.removeChild(document.currentScript);
-	
-			*/
-			})() </script>"
+})() 
+</script>"
 		];
 		
 		
@@ -160,33 +155,9 @@ JS
 		}
 		return $main;
 	}
-	/*
-	public function exportLayersSetupIntoJS(array $setup){
-		
-		
-		foreach($setup as $layer){
-			
-			$key = $layer['key'];
-			$scope = $layer['scope'];
-			
-			
-			if($scope){
-				foreach($scope as $key => $value){
-					
-					if($value instanceof ORMObject){
-						$value = "ModelManager.model('{$value->schema->key}', {$value->export()})";
-					}else if($value instanceof Route){
-						
-					}else{
-						
-					}
-					
-				}
-			}
-			
-		}
-		
-	}*/
+	public function exportSetup(array $setup){
+		return json_encode($setup, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+	}
 	
 	/**
 	 * Generate a outside program environment for cmd system

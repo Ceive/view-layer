@@ -290,47 +290,66 @@ export class LayerManager{
 		return this.blockTypes[typeKey];
 	}
 
-	keys;
+	setupLayers = {};
+	setupLayersOrder = [];
+	setupTargetLayer;
 
-	_chain;
 
-	set chain(keys){
+	/**
+	 * @TODO: Layer.scope integration
+	 * @param layers
+	 */
+	setup(layers){
 
-		this.unMountChain();
+		this.reset();
 
-		let ancestor,layer;
-		let requiredKeys = [];
-		for(let key of keys){
-			if(requiredKeys.indexOf(key)<0){
-				requiredKeys.push(key);
+		this.setupLayers = {};
+
+		for(let layerOptions of layers){
+
+			if(typeof layerOptions === 'string'){
+				layerOptions = {key: layerOptions, scope: {}};
+			}
+
+			let {key, scope} = layerOptions;
+			let ancestor = null, layer;
+			if(!this.setupLayers[key]){
 				layer = this.requireLayer(key);
 				layer.unpick();
-				layer.ancestor = ancestor||null;
+				layer.scope 	= scope;
+				layer.ancestor 	= ancestor;
+
+				this.setupLayersOrder.push(key);
+				this.setupLayers[key] = Object.assign([], layerOptions, { layer });
+
 				ancestor = layer;
 			}
 		}
-		this._chain = layer;
-		this.keys = requiredKeys;
-		this.onChainUpdate();
+
+		this.setupTargetLayer = layer;
+		this.onSetup();
 	}
 
-	get chain(){
-		return this._chain;
+	get targetLayer(){
+		return this.setupTargetLayer;
 	}
 
-	unMountChain(){
-		if(this._chain){
-			let l = this._chain, a;
+	reset(){
+		if(this.setupTargetLayer){
+			let l = this.setupTargetLayer, a;
 			do{
 				a = l.ancestor;
 				l.ancestor = null;
 				l.unpick();
 			}while(l = a);
 		}
-		this._chain = null;
+		this.setupTargetLayer 	= null;
+		this.setupLayers 		= {};
+		this.setupLayersOrder 	= [];
+
 	}
 
-	onChainUpdate(){}
+	onSetup(){}
 
 
 }
