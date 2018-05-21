@@ -57,7 +57,7 @@ window['Mlv'] = layerManager;
 class App extends React.Component{
 	
 	componentDidMount(){
-		window['Mlv'].onChainUpdate = () => {
+		window['Mlv'].onSetup = () => {
 			this.setState({
 				actualLayers: layerManager.setupLayersOrder
 			});
