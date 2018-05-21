@@ -513,9 +513,13 @@ class Transpiler extends BaseAware{
 	{$this->composeHolders($block->holdersRegistry, '	')}
 
 	$.block.getContents = function(){
-		return (({ {$scopeKeys} }) => {
+		return ((scope) => {
+			for (let p in scope){
+			  if(scope.hasOwnProperty(p))
+			    eval("var " + p + " = scope[p];");
+			}
 			{$componentCode}
-		}).bind(this.composition.layer.scope)( this.composition && this.composition.layer ? this.composition.layer.scope : {} );
+		})( this.composition && this.composition.layer ? this.composition.layer.scope : {} );
 	};
 	$.block.getContents = $.block.getContents.bind($.block);
 
